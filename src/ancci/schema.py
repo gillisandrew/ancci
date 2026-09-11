@@ -121,8 +121,9 @@ class Card(BaseModel):
             if deletions > 3:
                 out.append(f"{deletions} cloze deletions; split the card (max 3)")
         else:
-            if len(self.front) > 200:
-                out.append(f"front is {len(self.front)} chars; condense the question (max 200)")
+            question = re.sub(r"```.*?```", "", self.front, flags=re.DOTALL)  # pattern snippets don't count
+            if len(question) > 200:
+                out.append(f"front is {len(question)} chars excluding code; condense the question (max 200)")
             if len(self.back) > 300:
                 out.append(f"back is {len(self.back)} chars; condense to bold verdict + bullets (max 300)")
             bullets = sum(1 for line in self.back.splitlines() if re.match(r"\s*[-*] ", line))
