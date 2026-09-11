@@ -124,8 +124,8 @@ class Card(BaseModel):
             question = re.sub(r"```.*?```", "", self.front, flags=re.DOTALL)  # pattern snippets don't count
             if len(question) > 200:
                 out.append(f"front is {len(question)} chars excluding code; condense the question (max 200)")
-            if len(self.back) > 300:
-                out.append(f"back is {len(self.back)} chars; condense to bold verdict + bullets (max 300)")
+            if len(self.back) > 220:
+                out.append(f"back is {len(self.back)} chars; condense to bold verdict + bullets (max 220)")
             bullets = sum(1 for line in self.back.splitlines() if re.match(r"\s*[-*] ", line))
             if bullets > 3:
                 out.append(f"back has {bullets} bullets (max 3)")
