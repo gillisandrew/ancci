@@ -1,0 +1,23 @@
+[project]
+name = "ancci"
+version = "0.1.0"
+description = "Agentic AI Anki deck: YAML cards synced one-way into Anki via AnkiConnect"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "markdown-it-py>=3.0",
+    "pydantic>=2.8",
+    "pygments>=2.18",
+    "pyyaml>=6.0",
+    "requests>=2.32",
+]
+
+[project.scripts]
+ancci = "ancci.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
