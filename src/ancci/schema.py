@@ -121,10 +121,13 @@ class Card(BaseModel):
             if deletions > 3:
                 out.append(f"{deletions} cloze deletions; split the card (max 3)")
         else:
-            if len(self.front) > 400:
-                out.append(f"front is {len(self.front)} chars; is the prompt focused?")
-            if len(self.back) > 700:
-                out.append(f"back is {len(self.back)} chars; is the answer atomic?")
+            if len(self.front) > 200:
+                out.append(f"front is {len(self.front)} chars; condense the question (max 200)")
+            if len(self.back) > 300:
+                out.append(f"back is {len(self.back)} chars; condense to bold verdict + bullets (max 300)")
+            bullets = sum(1 for line in self.back.splitlines() if re.match(r"\s*[-*] ", line))
+            if bullets > 3:
+                out.append(f"back has {bullets} bullets (max 3)")
         if self.code and self.code.count("\n") > 25:
             out.append("code block is over 25 lines")
         return out

@@ -72,6 +72,10 @@ _BASE_CSS = """
 .prompt > :last-child, .answer > :last-child { margin-bottom: 0; }
 .kicker { font-size: .72em; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: .5em; }
 hr#answer { border: 0; border-top: 1px solid var(--rule); margin-top: 1.1em; margin-bottom: 1.1em; }
+.answer p { margin-top: .3em; margin-bottom: .3em; }
+.answer ul { margin-top: .3em; margin-bottom: .3em; padding-left: 1.2em; }
+.answer li { margin: .15em 0; }
+.answer strong { font-weight: 650; }
 .cloze { color: var(--accent); font-weight: 600; }
 code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: .86em;
        background: var(--panel); padding: .08em .3em; border-radius: 4px; }

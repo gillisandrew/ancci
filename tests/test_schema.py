@@ -79,9 +79,16 @@ def test_duplicate_ids_across_files(tmp_path):
 
 
 def test_long_answers_warn_but_do_not_fail(tmp_path):
-    _, problems = load([write(tmp_path, "context", [card(back="x" * 800)])])
+    _, problems = load([write(tmp_path, "context", [card(back="x" * 301), card(id="context.q", front="y" * 201)])])
     assert errors(problems) == []
-    assert any("atomic" in str(p) for p in problems)
+    assert any("condense to bold verdict" in str(p) for p in problems)
+    assert any("condense the question" in str(p) for p in problems)
+
+
+def test_more_than_three_bullets_warns(tmp_path):
+    back = "**Verdict**\n\n- a\n- b\n- c\n- d\n"
+    _, problems = load([write(tmp_path, "context", [card(back=back)])])
+    assert any("4 bullets" in str(p) for p in problems)
 
 
 def test_unknown_keys_are_errors(tmp_path):
