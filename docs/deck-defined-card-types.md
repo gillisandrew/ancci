@@ -120,9 +120,10 @@ is re-added as a duplicate and orphan detection silently stops seeing them.
 
 ## Compatibility
 
-Two real decks exist: `agentic-ai` (453 cards, 5 types, 22 using `reverse`) and
-`quebec-french` (95 cards across five areas, 3 types in use). Both must sync with **zero diff** —
-`add 0, update 0, orphan 0` — before any deck adopts the new configuration.
+Two real decks exist. `agentic-ai` uses all five shipped names, including reverse cards;
+`quebec-french` declares its own. Both carry live review history, and both must sync with
+**zero diff** — `add 0, update 0, orphan 0` — before any deck adopts the new configuration.
+Check that against the decks as they are, not against counts written here.
 
 Three properties make that achievable:
 
