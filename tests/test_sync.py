@@ -1,5 +1,5 @@
 from ancci.schema import ORPHAN_TAG, CardFile
-from ancci.sync import sync
+from ancci.sync import resolve, sync
 
 SOURCE = "https://platform.claude.com/docs/en/build-with-claude/prompt-caching"
 
@@ -11,6 +11,7 @@ class FakeAnki:
         self.models: dict[str, list[str]] = {}
         self.notes: dict[int, dict] = {}
         self.suspended: set[int] = set()
+        self.flags: dict[int, int] = {}
 
     def invoke(self, action, **params):
         return getattr(self, action)(**params)
@@ -80,6 +81,18 @@ class FakeAnki:
         for nid in notes:
             self.notes[nid]["tags"] += tags.split()
 
+    def findCards(self, query):
+        return [card for card, flag in self.flags.items() if flag]
+
+    def updateNoteFields(self, note):
+        self.notes[note["id"]]["fields"].update(note["fields"])
+
+    def setSpecificValueOfCard(self, card, keys, newValues):
+        for key, value in zip(keys, newValues):
+            if key == "flags":
+                self.flags[card] = value
+        return [True]
+
     def note_by_id(self, card_id):
         return next(n for n in self.notes.values() if n["fields"]["ID"] == card_id)
 
@@ -147,6 +160,39 @@ def test_syncing_one_area_never_orphans_another():
     sync(anki, [deck("context", card("context.a")), deck("tools", card("tools.a", topic="tool-choice"))], {"context", "tools"})
     result, _ = sync(anki, [deck("context", card("context.a"))], {"context"})
     assert result.orphans == []
+
+
+def test_resolve_clears_feedback_and_flags_but_leaves_the_leech_tag():
+    anki = FakeAnki()
+    sync(anki, [deck("context", card("context.a"))], {"context"})
+    note = anki.note_by_id("context.a")
+    note["fields"]["Feedback"] = "this is wrong"
+    note["tags"].append("leech")
+    anki.flags[10] = 1
+
+    cleared, errors = resolve(anki, ["context.a"])
+    assert (cleared, errors) == (["context.a"], [])
+    assert note["fields"]["Feedback"] == ""
+    assert anki.flags[10] == 0
+    assert "leech" in note["tags"]
+
+
+def test_resolve_all_covers_both_flagged_and_feedback_cards():
+    anki = FakeAnki()
+    sync(anki, [deck("context", card("context.a"), card("context.b"))], {"context"})
+    anki.note_by_id("context.a")["fields"]["Feedback"] = "this is wrong"
+    anki.flags[20] = 2
+
+    cleared, errors = resolve(anki, [], everything=True)
+    assert (cleared, errors) == (["context.a", "context.b"], [])
+    assert anki.flags[20] == 0
+
+
+def test_resolve_reports_an_unknown_card_id():
+    anki = FakeAnki()
+    sync(anki, [deck("context", card("context.a"))], {"context"})
+    cleared, errors = resolve(anki, ["context.nope"])
+    assert (cleared, errors) == ([], ["unknown card id: context.nope"])
 
 
 def test_changing_card_kind_is_a_conflict_not_an_update():

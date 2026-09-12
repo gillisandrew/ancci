@@ -6,12 +6,12 @@ from pathlib import Path
 
 from .anki import DEFAULT_URL, AnkiConnect, AnkiError
 from .schema import AREAS, CardFile, load
-from .sync import report, sync
+from .sync import report, resolve, sync
 
 CARDS_DIR = Path("cards")
 
 
-def _resolve(targets: list[str]) -> list[Path]:
+def _paths(targets: list[str]) -> list[Path]:
     if targets:
         return [Path(t) if t.endswith((".yaml", ".yml")) else CARDS_DIR / f"{t}.yaml" for t in targets]
     order = {area: i for i, area in enumerate(AREAS)}
@@ -19,7 +19,7 @@ def _resolve(targets: list[str]) -> list[Path]:
 
 
 def _load(targets: list[str]) -> tuple[list[CardFile], int]:
-    paths = _resolve(targets)
+    paths = _paths(targets)
     missing = [p for p in paths if not p.exists()]
     for path in missing:
         print(f"{path}: error: no such file", file=sys.stderr)
@@ -66,6 +66,19 @@ def _report(args) -> int:
     return 0
 
 
+def _resolve(args) -> int:
+    if not args.targets and not args.all:
+        print("error: name the card ids to clear, or pass --all", file=sys.stderr)
+        return 2
+    cleared, errors = resolve(AnkiConnect(args.url), args.targets, everything=args.all)
+    for card_id in cleared:
+        print(f"cleared {card_id}")
+    print(f"{len(cleared)} cards cleared")
+    for message in errors:
+        print(f"error: {message}", file=sys.stderr)
+    return 1 if errors else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="ancci", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -84,6 +97,12 @@ def main(argv: list[str] | None = None) -> int:
     report_cmd = sub.add_parser("report", help="list flagged cards, leeches and Feedback notes")
     report_cmd.add_argument("--url", default=DEFAULT_URL)
     report_cmd.set_defaults(run=_report)
+
+    resolve_cmd = sub.add_parser("resolve", help="clear Feedback and flags on cards you have since fixed")
+    resolve_cmd.add_argument("targets", nargs="*", help="card ids, as printed by report")
+    resolve_cmd.add_argument("--all", action="store_true", help="every flagged or Feedback card in the deck")
+    resolve_cmd.add_argument("--url", default=DEFAULT_URL)
+    resolve_cmd.set_defaults(run=_resolve)
 
     args = parser.parse_args(argv)
     try:

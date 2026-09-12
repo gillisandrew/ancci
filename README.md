@@ -25,6 +25,7 @@ uv run ancci sync --dry-run -v   # show what would change
 uv run ancci sync                # everything in cards/
 uv run ancci sync tools          # one area
 uv run ancci report              # flagged cards, leeches, Feedback notes
+uv run ancci resolve <card-id>   # clear Feedback and flags once fixed (--all for every one)
 uv run pytest
 ```
 

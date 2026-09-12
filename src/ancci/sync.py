@@ -187,3 +187,34 @@ def report(anki) -> str:
         if values.get("Feedback"):
             lines.append(f"  feedback: {_strip_html(values['Feedback'])}")
     return "\n".join(lines)
+
+
+def resolve(anki, card_ids: list[str], everything: bool = False) -> tuple[list[str], list[str]]:
+    """Clear the Feedback field and every flag on cards whose feedback has been acted on.
+
+    Only clears what the reviewer set for our benefit. Review history and the leech tag
+    are Anki's own; a leech stays a leech until you fix why it is one.
+    """
+    notes = fetch_notes(anki)
+    errors = [f"unknown card id: {card_id}" for card_id in card_ids if card_id not in notes]
+    if everything:
+        flagged = set(anki.invoke("findCards", query=f'"deck:{DECK}" -flag:0'))
+        targets = [note for note in notes.values() if note.fields.get("Feedback") or flagged.intersection(note.cards)]
+    else:
+        targets = [notes[card_id] for card_id in card_ids if card_id in notes]
+
+    actions, labels = [], []
+    for note in sorted(targets, key=lambda n: n.fields["ID"]):
+        if note.fields.get("Feedback"):
+            actions.append({"action": "updateNoteFields", "params": {"note": {"id": note.note_id, "fields": {"Feedback": ""}}}})
+            labels.append(note.fields["ID"])
+        for card in note.cards:
+            actions.append({"action": "setSpecificValueOfCard", "params": {"card": card, "keys": ["flags"], "newValues": [0]}})
+            labels.append(note.fields["ID"])
+    for label, (result, err) in zip(labels, anki.multi(actions) if actions else []):
+        # setSpecificValueOfCard reports failure inside its result, not as an error.
+        if err:
+            errors.append(f"{label}: {err}")
+        elif isinstance(result, list) and result and result[0] is False:
+            errors.append(f"{label}: {result[1] if len(result) > 1 else 'could not clear flag'}")
+    return sorted({note.fields["ID"] for note in targets}), errors
