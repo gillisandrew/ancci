@@ -15,7 +15,7 @@ Decks live in their own repositories. This one holds only the tooling.
 
 | skill | what it does |
 |---|---|
-| `/ancci:new-deck` | scaffolds a deck after settling subject, audience and card styles |
+| `/ancci:new-deck` | scaffolds a deck after settling subject, audience and card types |
 | `/ancci:add-source` | reads a page, video, PDF, EPUB or file into a research note |
 | `/ancci:author` | writes cards from a deck's research notes, sample batch first |
 | `/ancci:review` | gathers what you flagged while studying, helps fix it, clears the flags |
@@ -59,7 +59,19 @@ note_types:                 # optional; defaults to "<name> Basic" / "<name> Clo
   basic: Agentic Basic      # note types are global in Anki, so each deck names its own
   cloze: Agentic Cloze
 
-styles: [definition, cloze, footgun, tradeoff, pattern]   # optional; this is the default
+# Card types. ancci ships `basic` and `cloze`; every other name is the deck's own.
+# A bare name here gets the `basic` contract — unless it names a shipped type, which
+# keeps that type's contract.
+styles: [definition, footgun, tradeoff, pattern]
+
+card_types:                 # optional; a type declaring its own contract
+  oral:
+    note_type: cloze        # which entry in note_types: its cards land on
+    cloze: true
+    requires: [text]
+    optional: [extra, code]
+    fields: [Audio]         # extra Anki fields, written as `fields:` on a card
+
 tags: [beta, migration]     # optional; extra tags a card may carry
 templates: templates/       # optional; a directory of Anki templates and CSS of your own
 
@@ -153,7 +165,7 @@ you which decks it found rather than guess at one.
   history is kept.
 - A card removed from the repo is **suspended and tagged `orphaned`**, never deleted.
   Putting it back revives it. Syncing one area only orphans cards from that area.
-- The repo wins for card content and the tags it manages (`<tag_root>::*`, style tags and
+- The repo wins for card content and the tags it manages (`<tag_root>::*`, type tags and
   the deck's extra tags). Your own tags — including Anki's `leech` — and the `Feedback`
   field are left alone.
 - AnkiConnect cannot update a note open in the Browse window's editor; close it first.

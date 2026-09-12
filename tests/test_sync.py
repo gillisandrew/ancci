@@ -18,6 +18,7 @@ class FakeAnki:
         self.notes: dict[int, dict] = {}
         self.suspended: set[int] = set()
         self.flags: dict[int, int] = {}
+        self.last_find_query = ""
 
     def invoke(self, action, **params):
         return getattr(self, action)(**params)
@@ -53,6 +54,7 @@ class FakeAnki:
         pass
 
     def findNotes(self, query):
+        self.last_find_query = query
         return list(self.notes)
 
     def notesInfo(self, notes):
@@ -206,6 +208,65 @@ def test_resolve_all_covers_both_flagged_and_feedback_cards():
     cleared, errors = resolve(anki, DECK, [], everything=True)
     assert (cleared, errors) == (["context.a", "context.b"], [])
     assert anki.flags[20] == 0
+
+
+def french_deck():
+    """A deck declaring a type of its own, with a field of its own."""
+    config = DeckConfig.model_validate(
+        {
+            "name": "Test Deck",
+            "tag_root": "test",
+            "card_types": {
+                "vocab": {"requires": ["front", "back"], "optional": ["Phonetic"], "fields": ["Phonetic"]}
+            },
+        }
+    )
+    return Deck(config, Path("/tmp/deck"))
+
+
+def test_a_declared_field_reaches_the_note_type_and_the_note():
+    anki = FakeAnki()
+    deck = french_deck()
+    entry = card("context.a", style="vocab", fields={"Phonetic": "[pɑ̃tut]"})
+    result, errors = sync(anki, deck, [cards_file("context", entry)], {"context"})
+
+    assert (len(result.adds), errors) == (1, [])
+    # the field exists on the model, before Feedback
+    assert anki.models["Test Deck Basic"][-2:] == ["Phonetic", "Feedback"]
+    # and the note carries its value
+    assert "pɑ̃tut" in anki.note_by_id("context.a")["fields"]["Phonetic"]
+
+
+def test_removing_a_declared_field_refuses_rather_than_destroying():
+    anki = FakeAnki()
+    deck = french_deck()
+    sync(anki, deck, [cards_file("context", card("context.a", style="vocab"))], {"context"})
+    assert "Phonetic" in anki.models["Test Deck Basic"]
+
+    # The deck stops declaring the field. Anki still has it, full of content.
+    plain = Deck(DeckConfig.model_validate({"name": "Test Deck", "tag_root": "test"}), Path("/tmp/deck"))
+    result, _ = sync(anki, plain, [cards_file("context", card("context.a"))], {"context"})
+
+    assert any("Phonetic" in c and "will not" in c for c in result.conflicts)
+    # nothing was removed
+    assert "Phonetic" in anki.models["Test Deck Basic"]
+
+
+def test_note_lookup_covers_every_declared_model():
+    """The most dangerous spot: a model missing from the query makes its notes invisible,
+    so every one is re-added as a duplicate and orphan detection stops seeing them."""
+    anki = FakeAnki()
+    config = DeckConfig.model_validate(
+        {
+            "name": "Test Deck",
+            "tag_root": "test",
+            "note_types": {"basic": "T Basic", "cloze": "T Cloze", "audio": "T Audio"},
+            "card_types": {"oral": {"note_type": "audio", "requires": ["front", "back"]}},
+        }
+    )
+    sync(anki, Deck(config, Path("/tmp/deck")), [cards_file("context", card("context.a"))], {"context"})
+    assert 'note:T Audio' in anki.last_find_query
+    assert 'note:T Basic' in anki.last_find_query
 
 
 def test_resolve_reports_an_unknown_card_id():

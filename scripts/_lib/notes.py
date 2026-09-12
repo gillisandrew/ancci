@@ -21,9 +21,14 @@ class Note:
 
 
 def fetch_notes(anki, deck: Deck) -> dict[str, Note]:
-    """Every note belonging to this deck's note types, keyed by the card id it carries."""
-    names = deck.config.note_types
-    note_ids = anki.invoke("findNotes", query=f'"note:{names.basic}" or "note:{names.cloze}"')
+    """Every note belonging to this deck's note types, keyed by the card id it carries.
+
+    Every declared model, not just the two shipped ones. A model missing from this query is
+    invisible to sync: its notes are re-added as duplicates and orphan detection stops
+    seeing them, so this is the one place a deck-declared note type must not be forgotten.
+    """
+    query = " or ".join(f'"note:{model}"' for model in deck.config.note_types.values())
+    note_ids = anki.invoke("findNotes", query=query)
     notes: dict[str, Note] = {}
     for chunk in batched(note_ids, 500):
         for info in anki.invoke("notesInfo", notes=list(chunk)):

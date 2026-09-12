@@ -1,7 +1,8 @@
 """Card file schema. The YAML files in a deck's cards/ directory are its source of truth.
 
-What counts as a valid card is a property of the deck, not of the tool: its styles, its
-answer-shape limits, what it may cite and what tags it uses all come from its config.
+What counts as a valid card is a property of the deck, not of the tool. Which keys a card
+must carry, which it may carry, and which are forbidden all come from the card type it
+names; the deck declares those types, and the tool ships two.
 """
 
 import re
@@ -12,7 +13,7 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
-from .config import Deck, DeckConfig, area_of
+from .config import BUILTIN_KEYS, RESERVED_FIELDS, Deck, DeckConfig, area_of
 from .sources import Source, check, coerce
 
 ORPHAN_TAG = "orphaned"
@@ -29,7 +30,10 @@ class Card(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: str
-    style: str
+    # `style` is the older spelling and means exactly the same thing. Cards written before
+    # types existed keep parsing, and nothing had to be rewritten to introduce them.
+    type: str | None = None
+    style: str | None = None
     topic: str
     front: str | None = None
     back: str | None = None
@@ -37,6 +41,8 @@ class Card(BaseModel):
     extra: str | None = None
     code: str | None = None
     reverse: bool = False
+    # Anki fields this deck declared for itself, beyond the ones ancci writes.
+    fields: dict[str, str] = {}
     tags: list[str] = []
     sources: list[Source] = Field(min_length=1)
     verified: date
@@ -46,11 +52,16 @@ class Card(BaseModel):
         return self.id.split(".", 1)[0]
 
     @property
-    def is_cloze(self) -> bool:
-        return self.style == "cloze"
+    def kind(self) -> str:
+        """The card type this card names, whichever spelling it used."""
+        return self.type or self.style or ""
+
+    def present_keys(self) -> set[str]:
+        """Which built-in keys this card actually carries."""
+        return {key for key in BUILTIN_KEYS if getattr(self, key)}
 
     def anki_tags(self, config: DeckConfig) -> list[str]:
-        return [f"{config.tag_root}::{self.area}::{self.topic}", self.style, *self.tags]
+        return [f"{config.tag_root}::{self.area}::{self.topic}", self.kind, *self.tags]
 
     @field_validator("sources", mode="before")
     @classmethod
@@ -75,56 +86,96 @@ class Card(BaseModel):
 
     @model_validator(mode="after")
     def _shape(self) -> "Card":
-        if self.is_cloze:
-            if self.front or self.back:
-                raise ValueError("cloze cards use text/extra, not front/back")
-            if not self.text or not CLOZE_RE.search(self.text):
-                raise ValueError("cloze cards need text containing {{c1::...}}")
-        else:
-            if self.text or self.extra:
-                raise ValueError(f"{self.style} cards use front/back, not text/extra")
-            if not self.front or not self.back:
-                raise ValueError(f"{self.style} cards need both front and back")
-        if self.reverse:
-            if self.style != "definition":
-                raise ValueError("reverse is only allowed on definition cards")
-            if _plain(self.front) in _plain(self.back):
-                raise ValueError("reversed card would leak the answer: back contains the front term")
+        """Only what can be judged without the deck. The rest lives in errors()."""
+        if self.type and self.style and self.type != self.style:
+            raise ValueError(f"card names two types: type {self.type!r} and style {self.style!r}")
+        if not self.kind:
+            raise ValueError("card must name a type")
+        if self.reverse and self.front and self.back and _plain(self.front) in _plain(self.back):
+            raise ValueError("reversed card would leak the answer: back contains the front term")
         if self.code is not None and "```" not in self.code:
             raise ValueError("code must contain a fenced code block")
+        for name in self.fields:
+            if name in RESERVED_FIELDS:
+                raise ValueError(f"field {name!r} is reserved; ancci writes it")
         return self
 
     def errors(self, config: DeckConfig) -> list[str]:
         """Checks that need the deck's config, so they cannot live on the model itself."""
         out = []
-        if self.style not in config.styles:
-            out.append(f"unknown style '{self.style}'; this deck uses {', '.join(config.styles)}")
+        # Type-independent first. A bad citation or an undeclared tag is wrong whatever the
+        # type is, and reporting it now saves a second round trip once a typo'd type name
+        # is fixed.
         for tag in self.tags:
             if tag not in config.tags:
                 out.append(f"unknown tag '{tag}'; this deck uses {', '.join(config.tags) or '(none)'}")
         out += [problem for source in self.sources if (problem := check(source, config.sources))]
+
+        types = config.types()
+        card_type = types.get(self.kind)
+        if card_type is None:
+            known = ", ".join(sorted(types))
+            return [*out, f"unknown type '{self.kind}'; this deck has {known}"]
+
+        present = self.present_keys()
+        if missing := card_type.missing(present):
+            out.append(f"type '{self.kind}' requires {', '.join(missing)}")
+        if forbidden := card_type.forbidden(present):
+            out.append(f"type '{self.kind}' does not take {', '.join(forbidden)}")
+        if card_type.cloze and self.text and not CLOZE_RE.search(self.text):
+            out.append("cloze types need text containing {{c1::...}}")
+        for name in self.fields:
+            if name not in card_type.fields:
+                declared = ", ".join(card_type.fields) or "(none)"
+                out.append(f"type '{self.kind}' declares no field '{name}'; it has {declared}")
         return out
+
+    def _value(self, name: str) -> str | None:
+        return getattr(self, name, None) if name in BUILTIN_KEYS else self.fields.get(name)
 
     def warnings(self, config: DeckConfig) -> list[str]:
         limits = config.limits
+        card_type = config.types().get(self.kind)
+        if card_type is None:
+            return []
+
         out = []
-        if self.is_cloze:
-            deletions = len(set(CLOZE_RE.findall(self.text)))
-            if deletions > limits.cloze_deletions:
-                out.append(f"{deletions} cloze deletions; split the card (max {limits.cloze_deletions})")
+        if card_type.cloze:
+            if self.text and len(set(CLOZE_RE.findall(self.text))) > limits.cloze_deletions:
+                found = len(set(CLOZE_RE.findall(self.text)))
+                out.append(f"{found} cloze deletions; split the card (max {limits.cloze_deletions})")
         else:
-            question = re.sub(r"```.*?```", "", self.front, flags=re.DOTALL)  # pattern snippets don't count
-            if len(question) > limits.front_chars:
-                out.append(
-                    f"front is {len(question)} chars excluding code; condense the question (max {limits.front_chars})"
-                )
-            if len(self.back) > limits.back_chars:
-                out.append(
-                    f"back is {len(self.back)} chars; condense to bold verdict + bullets (max {limits.back_chars})"
-                )
-            bullets = sum(1 for line in self.back.splitlines() if re.match(r"\s*[-*] ", line))
-            if bullets > limits.bullets:
-                out.append(f"back has {bullets} bullets (max {limits.bullets})")
+            if self.front:
+                question = re.sub(r"```.*?```", "", self.front, flags=re.DOTALL)
+                if len(question) > limits.front_chars:
+                    out.append(
+                        f"front is {len(question)} chars excluding code; "
+                        f"condense the question (max {limits.front_chars})"
+                    )
+            if self.back:
+                if len(self.back) > limits.back_chars:
+                    out.append(
+                        f"back is {len(self.back)} chars; "
+                        f"condense to bold verdict + bullets (max {limits.back_chars})"
+                    )
+                bullets = sum(1 for line in self.back.splitlines() if re.match(r"\s*[-*] ", line))
+                if bullets > limits.bullets:
+                    out.append(f"back has {bullets} bullets (max {limits.bullets})")
+
+        # Per-field limits. One naming a field this type does not have is simply not checked.
+        for name, limit in limits.fields.items():
+            value = self._value(name)
+            if not value:
+                continue
+            if limit.chars and len(value) > limit.chars:
+                out.append(f"{name} is {len(value)} chars (max {limit.chars})")
+            if limit.bullets:
+                bullets = sum(1 for line in value.splitlines() if re.match(r"\s*[-*] ", line))
+                if bullets > limit.bullets:
+                    out.append(f"{name} has {bullets} bullets (max {limit.bullets})")
+            if limit.deletions and len(set(CLOZE_RE.findall(value))) > limit.deletions:
+                out.append(f"{name} has more than {limit.deletions} cloze deletions")
+
         if self.code and self.code.count("\n") > 25:
             out.append("code block is over 25 lines")
         return out

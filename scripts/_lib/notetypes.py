@@ -1,7 +1,11 @@
 """The note types the sync creates and keeps up to date in Anki.
 
-Note types are global across an Anki collection, so each deck names its own pair. The
-templates and CSS here are the defaults; a deck overrides them by pointing `templates:`
+Note types are global across an Anki collection, so each deck names its own. A deck may
+declare more than the two it gets by default; card types say which one they land on, and a
+note type's field list is the built-ins for its shape plus whatever fields the card types
+using it declare.
+
+The templates and CSS here are the defaults; a deck overrides them by pointing `templates:`
 at a directory of its own.
 """
 
@@ -29,6 +33,9 @@ _BACK_MATTER = """
 
 BASIC_FIELDS = ("ID", "Front", "Back", "Code", "Sources", "Verified", "Reverse", "Feedback")
 CLOZE_FIELDS = ("ID", "Text", "Extra", "Code", "Sources", "Verified", "Feedback")
+
+# Deck fields go here: before `Feedback`, so the field you type into stays last.
+_FEEDBACK = "Feedback"
 
 
 def basic(name: str) -> NoteType:
@@ -101,9 +108,26 @@ def _overridden(nt: NoteType, deck: Deck) -> NoteType:
     return replace(nt, templates=templates)
 
 
-def note_types(deck: Deck) -> tuple[NoteType, NoteType]:
-    names = deck.config.note_types
-    return _overridden(basic(names.basic), deck), _overridden(cloze(names.cloze), deck)
+def _with_fields(nt: NoteType, extra: list[str]) -> NoteType:
+    """Insert a deck's own fields before `Feedback`, so `Feedback` stays last."""
+    if not extra:
+        return nt
+    kept = [f for f in nt.fields if f != _FEEDBACK]
+    return replace(nt, fields=(*kept, *extra, _FEEDBACK))
+
+
+def is_cloze_note_type(deck: Deck, key: str) -> bool:
+    """A note type is cloze if any card type landing on it is."""
+    return any(t.cloze for t in deck.config.types().values() if t.note_type == key)
+
+
+def note_types(deck: Deck) -> dict[str, NoteType]:
+    """Every note type this deck declares, keyed as `note_types:` keys it."""
+    built: dict[str, NoteType] = {}
+    for key, model_name in deck.config.note_types.items():
+        shape = cloze(model_name) if is_cloze_note_type(deck, key) else basic(model_name)
+        built[key] = _overridden(_with_fields(shape, deck.config.fields_for(key)), deck)
+    return built
 
 
 _BASE_CSS = """

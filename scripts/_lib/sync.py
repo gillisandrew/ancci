@@ -12,8 +12,13 @@ from .schema import ORPHAN_TAG, Card, CardFile
 
 
 def managed_tags(config: DeckConfig) -> set[str]:
-    """Tags the sync owns. Everything else on a note belongs to the user."""
-    return {*config.styles, *config.tags, ORPHAN_TAG}
+    """Tags the sync owns. Everything else on a note belongs to the user.
+
+    A card's type is its tag, so the vocabulary is every type the deck resolves to — not
+    just the bare names in `styles:`. Miss the shipped ones and they read as user tags,
+    which shows up as tag churn rather than as an error.
+    """
+    return {*config.types(), *config.tags, ORPHAN_TAG}
 
 
 def is_managed_tag(tag: str, config: DeckConfig) -> bool:
@@ -21,8 +26,10 @@ def is_managed_tag(tag: str, config: DeckConfig) -> bool:
 
 
 def note_type_for(card: Card, deck: Deck) -> str:
-    names = deck.config.note_types
-    return names.cloze if card.is_cloze else names.basic
+    """The Anki model name a card lands on, via the note type its card type names."""
+    card_type = deck.config.types().get(card.kind)
+    key = card_type.note_type if card_type else "basic"
+    return deck.config.note_types[key]
 
 
 @dataclass
@@ -40,11 +47,13 @@ def desired_tags(card: Card, config: DeckConfig, note: Note | None = None) -> li
     return sorted({*card.anki_tags(config), *kept})
 
 
-def ensure_setup(anki, deck: Deck) -> None:
+def ensure_setup(anki, deck: Deck) -> list[str]:
+    """Create or update every note type this deck declares. Returns refusals, not raises."""
     anki.invoke("createDeck", deck=deck.config.name)
     css = css_for(deck)
     existing = set(anki.invoke("modelNames"))
-    for nt in note_types(deck):
+    refusals = []
+    for nt in note_types(deck).values():
         templates = {name: {"Front": front, "Back": back} for name, (front, back) in nt.templates.items()}
         if nt.name not in existing:
             anki.invoke(
@@ -57,11 +66,21 @@ def ensure_setup(anki, deck: Deck) -> None:
             )
             continue
         have = anki.invoke("modelFieldNames", modelName=nt.name)
+        # Removing or renaming a field destroys its content on every note, and there is no
+        # undo. Refuse and say so; never call modelFieldRemove.
+        if stale := [name for name in have if name not in nt.fields]:
+            refusals.append(
+                f"{nt.name}: Anki has field(s) {', '.join(stale)} that this deck no longer declares. "
+                f"Removing a field destroys its content, so sync will not do it. "
+                f"Declare a new card type, or remove the field by hand in Anki."
+            )
+            continue
         for index, name in enumerate(nt.fields):
             if name not in have:
                 anki.invoke("modelFieldAdd", modelName=nt.name, fieldName=name, index=index)
         anki.invoke("updateModelTemplates", model={"name": nt.name, "templates": templates})
         anki.invoke("updateModelStyling", model={"name": nt.name, "css": css})
+    return refusals
 
 
 def plan(files: list[CardFile], notes: dict[str, Note], areas: set[str], deck: Deck) -> Plan:
@@ -79,12 +98,13 @@ def plan(files: list[CardFile], notes: dict[str, Note], areas: set[str], deck: D
                 continue
             if note.model != note_type_for(card, deck):
                 result.conflicts.append(
-                    f"{card.id}: is a {note.model} note in Anki but a {card.style} card in the repo; give it a new id"
+                    f"{card.id}: is a {note.model} note in Anki but a {card.kind} card in the repo; "
+                    f"give it a new id"
                 )
                 continue
             if ORPHAN_TAG in note.tags:
                 result.revives.append(note)
-            new_fields = render.fields(card)
+            new_fields = render.fields(card, config)
             stale_fields = any(note.fields.get(name) != value for name, value in new_fields.items())
             if stale_fields or set(note.tags) != set(desired_tags(card, config, note)):
                 result.updates.append((note, card))
@@ -107,7 +127,7 @@ def apply(anki, result: Plan, deck: Deck) -> list[str]:
                     "note": {
                         "deckName": config.name,
                         "modelName": note_type_for(card, deck),
-                        "fields": render.fields(card),
+                        "fields": render.fields(card, config),
                         "tags": card.anki_tags(config),
                         "options": {"allowDuplicate": False},
                     }
@@ -121,7 +141,11 @@ def apply(anki, result: Plan, deck: Deck) -> list[str]:
             {
                 "action": "updateNote",
                 "params": {
-                    "note": {"id": note.note_id, "fields": render.fields(card), "tags": desired_tags(card, config, note)}
+                    "note": {
+                        "id": note.note_id,
+                        "fields": render.fields(card, config),
+                        "tags": desired_tags(card, config, note),
+                    }
                 },
             }
             for note, card in chunk
@@ -136,7 +160,11 @@ def apply(anki, result: Plan, deck: Deck) -> list[str]:
 
 
 def sync(anki, deck: Deck, files: list[CardFile], areas: set[str], dry_run: bool = False) -> tuple[Plan, list[str]]:
+    refusals = []
     if not dry_run:
-        ensure_setup(anki, deck)
+        refusals = ensure_setup(anki, deck)
     result = plan(files, fetch_notes(anki, deck), areas, deck)
+    if refusals:
+        result.conflicts.extend(refusals)
+        return result, []
     return result, ([] if dry_run else apply(anki, result, deck))

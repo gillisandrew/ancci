@@ -1,6 +1,9 @@
 # Deck-defined card types and fields
 
-Status: **designed, not built.** This records the configuration settled on, and why.
+Status: **implemented.** This records the configuration settled on, and why.
+
+Both existing decks sync with `add 0, update 0, orphan 0` against it, which was the
+acceptance test.
 
 ## Goal
 
@@ -35,9 +38,9 @@ card_types:
     fields: [Audio, Phonetic]
     
 limits:
-  front: {chars: 200}           # per field
-  Phonetic: {chars: 40}
-  back_chars: 220               # the old four still work
+  back_chars: 220               # the old four still work, unchanged
+  fields:                       # per field, nested so a typo stays an error
+    Phonetic: {chars: 40}
 ```
 
 A card names its type, and carries deck fields nested:
@@ -106,8 +109,11 @@ silently dropping it.
 
 ### Limits
 
-Per field, keyed by field name. The existing `front_chars`, `back_chars`, `bullets` and
-`cloze_deletions` keep working and mean what they mean now. A limit naming a field the type
+Per field, nested under `limits.fields:` and keyed by a built-in key or a declared field
+name. They are nested rather than flat so that `Limits` can keep `extra="forbid"` — flat,
+a misspelled `back_char` would silently become a per-field limit for a field nobody has.
+The existing `front_chars`, `back_chars`, `bullets` and `cloze_deletions` keep working and
+mean what they mean now. A limit naming a field the type
 does not have is simply not checked — never a crash, and never a silent end to checking the
 built-ins.
 

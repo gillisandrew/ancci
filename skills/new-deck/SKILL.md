@@ -29,9 +29,15 @@ should be called or where they go if the answer is obvious from the surrounding 
 2. **Audience** — what the reader already knows, so cards never explain it. This is the
    single most useful line in the whole config; a deck for a beginner and a deck for a
    practitioner share no cards.
-3. **Card styles** — the shipped default is `definition, cloze, footgun, tradeoff, pattern`.
-   Those last two suit software. For anything else, propose styles that fit the material
-   (a language deck might want `conjugation`; a cooking deck `technique`, `ratio`).
+3. **Card types** — ancci ships only `basic` and `cloze`; every other name is the deck's
+   own. Propose type names that fit the material (a language deck might want `conjugation`;
+   a cooking deck `technique`, `ratio`) and list them under `styles:`, which gives each the
+   default shape: `front` and `back` required, `code` and `reverse` optional.
+
+   A type needing more than that goes under `card_types:` instead, where it declares its own
+   `requires`, `optional`, `cloze`, and `fields` — extra Anki fields the deck adds, such as a
+   phonetic transcription. Do not reach for this unless the material actually needs it; most
+   decks never do.
 4. **Sources** — which publishers this deck may cite, if it should be restricted at all.
    Leave `hosts` out entirely to accept any https URL.
 5. **Anki deck name** — what it will be called in their collection.

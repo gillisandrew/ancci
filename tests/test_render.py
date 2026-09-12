@@ -15,7 +15,8 @@ def deck_with_templates(tmp_path, **files):
 
 def test_a_deck_without_templates_gets_the_shipped_ones(tmp_path):
     plain = Deck(DeckConfig.model_validate({"name": "T", "tag_root": "t"}), tmp_path)
-    basic, cloze = note_types(plain)
+    types = note_types(plain)
+    basic, cloze = types["basic"], types["cloze"]
     assert "{{Front}}" in basic.templates["Card 1"][0]
     assert "{{cloze:Text}}" in cloze.templates["Cloze"][0]
     assert css_for(plain) == CSS
@@ -23,7 +24,8 @@ def test_a_deck_without_templates_gets_the_shipped_ones(tmp_path):
 
 def test_a_deck_can_replace_one_side_and_keep_the_rest(tmp_path):
     deck = deck_with_templates(tmp_path, **{"basic.front.html": "<h1>{{Front}}</h1>"})
-    basic, cloze = note_types(deck)
+    types = note_types(deck)
+    basic, cloze = types["basic"], types["cloze"]
     assert basic.templates["Card 1"][0] == "<h1>{{Front}}</h1>"
     # Everything it did not override is still the shipped template.
     assert "<hr id=" in basic.templates["Card 1"][1]
@@ -35,7 +37,8 @@ def test_cloze_and_reverse_templates_are_overridable(tmp_path):
         tmp_path,
         **{"cloze.back.html": "<div>{{Extra}}</div>", "basic-reverse.front.html": "<p>{{Back}}</p>"},
     )
-    basic, cloze = note_types(deck)
+    types = note_types(deck)
+    basic, cloze = types["basic"], types["cloze"]
     assert cloze.templates["Cloze"][1] == "<div>{{Extra}}</div>"
     assert basic.templates["Card 2"][0] == "<p>{{Back}}</p>"
 

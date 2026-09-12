@@ -27,7 +27,7 @@ one are wrong cards.
 
 Never write a card before reading, in this order:
 
-1. **`deck.yaml`** — the styles this deck uses, its limits, what it may cite, and usually
+1. **`deck.yaml`** — the types this deck has, its limits, what it may cite, and usually
    all the prose there is: `audience` (what the reader already knows, so a card never
    explains it), `scope` (what belongs on a card) and `avoid` (what does not). A style not
    listed is an error, not a suggestion.
@@ -41,20 +41,36 @@ Never write a card before reading, in this order:
 5. An existing `cards/*.yaml`, if any. The cards are the deck's real style guide — match
    their voice exactly rather than inventing a new one.
 
+## Card types
+
+**Which keys a card may carry comes from its type, and the deck declares its types.** Read
+`deck.yaml` before writing anything:
+
+- `styles:` lists type names using the default shape — `front` and `back` required, `code`
+  and `reverse` optional.
+- `card_types:` declares types with their own contract: `requires`, `optional`, `cloze`,
+  and `fields` for extra Anki fields of the deck's own.
+- ancci itself ships only `basic` and `cloze`. Every other name you see is the deck's.
+
+A card naming a type the deck does not have is an error, not a suggestion. A key the type
+does not list is an error too — so do not reach for `code` on a type that never allowed it.
+
 ## Card fields
 
 ```yaml
 area: extraction              # matches the file name with its NN- prefix stripped
 cards:
   - id: extraction.bloom      # <area>.<kebab-slug>, permanent once synced
-    style: technique          # must be one the deck declares
+    type: technique           # a type the deck declares; `style:` means the same thing
     topic: pour-over          # kebab-case; becomes <tag_root>::<area>::<topic>
-    front: |                  # every style except cloze
+    front: |                  # whichever keys this type requires and allows
     back: |
-    text: |                   # cloze only, with {{c1::...}}
-    extra: |                  # cloze only, optional
-    code: |                   # optional, fenced, shown on the back
-    reverse: false            # definition only; the back must not contain the front
+    text: |                   # cloze types, with {{c1::...}}
+    extra: |
+    code: |                   # fenced, shown on the back
+    reverse: false            # only where the type allows it; back must not contain front
+    fields:                   # only fields this type declares
+      Phonetic: "[pɑ̃tut]"
     tags: [beta]              # only tags the deck declares
     sources:                  # a bare string is a URL
       - https://example.com/page
