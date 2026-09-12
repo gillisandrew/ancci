@@ -120,6 +120,12 @@ Guidance sits in three layers, so a deck stays light:
 
 A deck that genuinely needs more keeps its own `AUTHORING.md`, which overrides the rest.
 
+**A deck that invents card types describes them there.** `deck.yaml` says what a type
+requires and allows; it cannot say what the type is *for*, or what a good `faux-ami` front
+looks like as opposed to a `registre` one. House style already works this way for the
+shipped types, and whoever writes cards next — you in six months, or the author skill —
+reads that file before writing any.
+
 ## Sources
 
 A card cites one or more sources. A bare string is a URL:
