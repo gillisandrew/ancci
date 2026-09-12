@@ -12,14 +12,14 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel, ConfigDict, model_validator
 
+from .errors import ConfigError
+
 DECK_CONFIG = "deck.yaml"
 ROOT_CONFIG = "ancci.yaml"
 
 DEFAULT_STYLES = ("definition", "cloze", "footgun", "tradeoff", "pattern")
 
-
-class ConfigError(Exception):
-    """Raised when a deck's configuration is missing or unusable."""
+__all__ = ["DECK_CONFIG", "DEFAULT_STYLES", "ROOT_CONFIG", "ConfigError", "Deck", "DeckConfig", "area_of", "find_deck", "load_deck"]
 
 
 class Limits(BaseModel):

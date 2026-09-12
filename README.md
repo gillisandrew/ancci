@@ -6,6 +6,27 @@ may cite and what it lands on in Anki are all properties of the deck, not of thi
 
 Decks live in their own repositories. This one holds only the tooling.
 
+## Install
+
+```
+/plugin marketplace add gillisandrew/ancci
+/plugin install ancci@ancci
+```
+
+| skill | what it does |
+|---|---|
+| `/ancci:new-deck` | scaffolds a deck after settling subject, audience and card styles |
+| `/ancci:author` | writes cards from a deck's research notes, sample batch first |
+| `/ancci:review` | gathers what you flagged while studying, helps fix it, clears the flags |
+| `/ancci:sync` | validates and pushes a deck into Anki, dry run first |
+
+`new-deck` and `author` only run when you ask for them by name; `review` and `sync` can
+also be triggered by asking in plain English.
+
+The scripts need no installation of their own: each declares its dependencies inline and is
+run by [uv](https://docs.astral.sh/uv/), which builds an isolated environment on first use.
+uv 0.6.3 or newer is required.
+
 ## What a deck is
 
 A directory containing `deck.yaml`. Commands find it by walking up from the working
@@ -68,15 +89,21 @@ publisher. Files and repositories are cited by path and ref instead.
 
 ## Usage
 
+The skills above are the usual way in. Each script also stands alone — run it from inside
+a deck, or point it at one with `--deck`:
+
 ```sh
-ancci validate            # schema + answer-shape checks, no Anki needed
-ancci sync --dry-run -v   # show what would change
-ancci sync                # the whole deck
-ancci sync tools          # one area
-ancci report              # flagged cards, leeches, Feedback notes
-ancci resolve <card-id>   # clear Feedback and flags once fixed
-ancci --deck path/to/deck sync    # a deck other than the one you are standing in
+scripts/validate.py                  # schema + answer-shape checks, no Anki needed
+scripts/sync.py --dry-run -v         # show what would change
+scripts/sync.py                      # the whole deck
+scripts/sync.py tools                # one area
+scripts/report.py                    # flagged cards, leeches, Feedback notes
+scripts/resolve.py <card-id>         # clear Feedback and flags once fixed
+scripts/sync.py --deck path/to/deck  # a deck other than the one you are standing in
 ```
+
+Only `sync`, `report` and `resolve` ever contact Anki; `validate.py` deliberately depends on
+nothing that could reach it.
 
 Run from a directory holding several decks and nothing else, and every command will tell
 you which decks it found rather than guess at one.

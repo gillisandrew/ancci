@@ -2,11 +2,11 @@
 
 import requests
 
+from .errors import AnkiError
+
 DEFAULT_URL = "http://127.0.0.1:8765"
 
-
-class AnkiError(RuntimeError):
-    pass
+__all__ = ["DEFAULT_URL", "AnkiConnect", "AnkiError"]
 
 
 class AnkiConnect:

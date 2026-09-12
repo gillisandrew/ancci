@@ -1,0 +1,16 @@
+{
+  "name": "ancci",
+  "owner": {
+    "name": "Andrew Gillis",
+    "url": "https://github.com/gillisandrew"
+  },
+  "plugins": [
+    {
+      "name": "ancci",
+      "source": "./",
+      "description": "Author Anki decks as YAML from sources you trust, and sync them into Anki without losing review history.",
+      "version": "0.1.0",
+      "category": "productivity"
+    }
+  ]
+}

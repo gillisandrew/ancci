@@ -1,7 +1,7 @@
 import yaml
 
-from ancci.config import Deck, DeckConfig
-from ancci.schema import load
+from _lib.config import Deck, DeckConfig
+from _lib.schema import load
 
 SOURCE = "https://platform.claude.com/docs/en/build-with-claude/prompt-caching"
 

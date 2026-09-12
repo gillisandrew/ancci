@@ -1,8 +1,9 @@
+# Development only. The shipped scripts declare their own dependencies inline (PEP 723)
+# and are run by uv, so nobody installing this plugin ever installs a package.
 [project]
-name = "ancci"
-version = "0.1.0"
-description = "Agentic AI Anki deck: YAML cards synced one-way into Anki via AnkiConnect"
-readme = "README.md"
+name = "ancci-dev"
+version = "0"
+description = "Development environment for the ancci scripts and their tests"
 requires-python = ">=3.12"
 dependencies = [
     "markdown-it-py>=3.0",
@@ -12,12 +13,12 @@ dependencies = [
     "requests>=2.32",
 ]
 
-[project.scripts]
-ancci = "ancci.cli:main"
-
 [dependency-groups]
 dev = ["pytest>=8"]
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["scripts"]
+testpaths = ["tests"]

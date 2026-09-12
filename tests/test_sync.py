@@ -1,8 +1,9 @@
 from pathlib import Path
 
-from ancci.config import Deck, DeckConfig
-from ancci.schema import ORPHAN_TAG, CardFile
-from ancci.sync import resolve, sync
+from _lib.config import Deck, DeckConfig
+from _lib.review import resolve
+from _lib.schema import ORPHAN_TAG, CardFile
+from _lib.sync import sync
 
 SOURCE = "https://platform.claude.com/docs/en/build-with-claude/prompt-caching"
 

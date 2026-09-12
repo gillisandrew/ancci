@@ -1,0 +1,21 @@
+# A worked example, and the fixture the tests run against.
+#
+# Nothing here is about software: the point is that a deck declares its own vocabulary.
+# `technique` and `ratio` are styles this deck invented; `footgun` and `pattern`, which
+# ancci ships by default, are absent because they suit software and not coffee.
+name: Coffee Brewing
+tag_root: coffee
+
+styles: [definition, cloze, technique, ratio]
+tags: [disputed]
+
+limits:
+  back_chars: 240
+  front_chars: 200
+  bullets: 3
+  cloze_deletions: 3
+
+# No `hosts` key, so any https source is accepted. A deck that cares about provenance
+# lists the publishers it trusts instead.
+sources:
+  require_https: true

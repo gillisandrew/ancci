@@ -1,5 +1,5 @@
-from ancci.notetypes import CSS
-from ancci.render import markdown
+from _lib.notetypes import CSS
+from _lib.render import markdown
 
 
 def test_raw_html_is_shown_literally():
