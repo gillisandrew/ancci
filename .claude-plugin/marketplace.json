@@ -1,5 +1,6 @@
 {
   "name": "ancci",
+  "description": "Author Anki decks as YAML from sources you trust, and sync them into Anki without losing review history.",
   "owner": {
     "name": "Andrew Gillis",
     "url": "https://github.com/gillisandrew"
