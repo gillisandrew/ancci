@@ -75,6 +75,26 @@ sources:                    # optional; omit `hosts` to accept any URL
   require_https: true
 ```
 
+### Replacing the card templates
+
+`templates:` points at a directory of your own. Ship any subset of these; whatever you
+leave out keeps the template ancci ships.
+
+```
+<deck>/templates/
+  basic.front.html          basic.back.html
+  basic-reverse.front.html  basic-reverse.back.html   # the "Name it" card
+  cloze.front.html          cloze.back.html
+  cards.css
+```
+
+They are Anki templates, so `{{Front}}`, `{{Back}}`, `{{cloze:Text}}`, `{{Code}}`,
+`{{Sources}}`, `{{Verified}}` and `{{Feedback}}` are the fields available. An empty file is
+an error rather than a blank card side.
+
+Reach for this only when CSS genuinely cannot do it — `cards.css` alone restyles a deck
+completely, and it cannot break the fields a card depends on.
+
 A repo holding several decks can put shared house style in a root `ancci.yaml` using the
 same keys; each deck inherits it and overrides only what differs.
 

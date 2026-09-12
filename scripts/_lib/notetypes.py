@@ -5,12 +5,13 @@ templates and CSS here are the defaults; a deck overrides them by pointing `temp
 at a directory of its own.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from pygments.formatters import HtmlFormatter
 
 from .config import Deck
+from .errors import ConfigError
 
 
 @dataclass(frozen=True)
@@ -65,9 +66,44 @@ def cloze(name: str) -> NoteType:
     )
 
 
+# Which file overrides which side of which card. A deck may ship any subset; whatever it
+# leaves out keeps the template shipped here.
+#
+#   <templates>/basic.front.html          basic.back.html
+#   <templates>/basic-reverse.front.html  basic-reverse.back.html   (the "Name it" card)
+#   <templates>/cloze.front.html          cloze.back.html
+#   <templates>/cards.css
+TEMPLATE_STEMS = {"Card 1": "basic", "Card 2": "basic-reverse", "Cloze": "cloze"}
+
+
+def _override(deck: Deck, stem: str, side: str) -> str | None:
+    """A deck's own HTML for one side of one card, if it ships any."""
+    if not deck.config.templates:
+        return None
+    path = Path(deck.root, deck.config.templates, f"{stem}.{side}.html")
+    if not path.is_file():
+        return None
+    html = path.read_text().strip()
+    if not html:
+        # Anki would accept this and render a blank side on every card of the type.
+        raise ConfigError(f"{path} is empty; delete it to use the shipped template")
+    return html
+
+
+def _overridden(nt: NoteType, deck: Deck) -> NoteType:
+    templates = {}
+    for name, (front, back) in nt.templates.items():
+        stem = TEMPLATE_STEMS[name]
+        templates[name] = (
+            _override(deck, stem, "front") or front,
+            _override(deck, stem, "back") or back,
+        )
+    return replace(nt, templates=templates)
+
+
 def note_types(deck: Deck) -> tuple[NoteType, NoteType]:
     names = deck.config.note_types
-    return basic(names.basic), cloze(names.cloze)
+    return _overridden(basic(names.basic), deck), _overridden(cloze(names.cloze), deck)
 
 
 _BASE_CSS = """
