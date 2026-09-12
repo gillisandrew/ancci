@@ -11,8 +11,14 @@ allowed-tools: Read, Write, Edit, Glob, Bash("${CLAUDE_PLUGIN_ROOT}/scripts/vali
 Create a deck directory that ancci can validate and sync. The subject is `$ARGUMENTS` if
 given; otherwise ask for it first.
 
-A deck is a directory containing `deck.yaml`. Where it goes is the user's call — usually a
-new directory beside any existing decks in the same repository.
+A deck is a directory containing `deck.yaml`, and a repository normally holds several side
+by side. See what is already there before choosing a name and a place:
+
+```bash
+"${CLAUDE_PLUGIN_ROOT}/scripts/decks.py"
+```
+
+The new deck goes beside them, as a sibling directory at the same root.
 
 ## Settle these before writing anything
 
@@ -56,7 +62,7 @@ root `ancci.yaml` instead and let each `deck.yaml` override only what differs.
 ## Finish by proving it loads
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/scripts/validate.py" --deck <deck>
+"${CLAUDE_PLUGIN_ROOT}/scripts/validate.py" --deck <name>
 ```
 
 An empty deck validates as `0 cards in 0 files`. Report that, and say what to do next:

@@ -11,10 +11,22 @@ This skill turns that into fixed cards.
 
 Anki must be running with AnkiConnect.
 
+## Which deck
+
+A session often sits at the root of a repository holding several decks. List them, then
+pass `--deck <name>` to every command below:
+
+```bash
+"${CLAUDE_PLUGIN_ROOT}/scripts/decks.py"
+```
+
+Inside a single deck, `--deck` can be omitted. If more than one is listed and the user has
+not said which, ask.
+
 ## 1. Gather
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/scripts/report.py" --deck <deck>
+"${CLAUDE_PLUGIN_ROOT}/scripts/report.py" --deck <name>
 ```
 
 Each line is a card id, why it needs attention (flag colour, `leech`, `feedback`) and the
@@ -46,10 +58,10 @@ fix keeps the id.
 Then validate, sync, and only then clear the flags:
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/scripts/validate.py" --deck <deck>
-"${CLAUDE_PLUGIN_ROOT}/scripts/sync.py" --deck <deck> --dry-run
-"${CLAUDE_PLUGIN_ROOT}/scripts/sync.py" --deck <deck>
-"${CLAUDE_PLUGIN_ROOT}/scripts/resolve.py" --deck <deck> <card-id>...
+"${CLAUDE_PLUGIN_ROOT}/scripts/validate.py" --deck <name>
+"${CLAUDE_PLUGIN_ROOT}/scripts/sync.py" --deck <name> --dry-run
+"${CLAUDE_PLUGIN_ROOT}/scripts/sync.py" --deck <name>
+"${CLAUDE_PLUGIN_ROOT}/scripts/resolve.py" --deck <name> <card-id>...
 ```
 
 `resolve` clears the Feedback field and every flag on those cards. It deliberately leaves

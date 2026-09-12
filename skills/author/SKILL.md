@@ -8,8 +8,20 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash("${CLAUDE_PLUGIN_ROOT}/script
 
 # Author cards
 
-Turn source notes into cards for the deck you are standing in. `$ARGUMENTS` names the area
-or topic if given.
+Turn source notes into cards. `$ARGUMENTS` names the area or topic if given.
+
+## Which deck
+
+A session often sits at the root of a repository holding several decks. List them, then
+pass `--deck <name>` to every command below:
+
+```bash
+"${CLAUDE_PLUGIN_ROOT}/scripts/decks.py"
+```
+
+Inside a single deck, `--deck` can be omitted. If more than one is listed and the user has
+not said which, ask. Each deck has its own styles and voice, so cards written for the wrong
+one are wrong cards.
 
 ## Read the deck first
 
@@ -50,7 +62,7 @@ discover later. Wait for the answer; do not treat silence as approval.
 ## Finish by validating
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/scripts/validate.py" --deck <deck> <area>
+"${CLAUDE_PLUGIN_ROOT}/scripts/validate.py" --deck <name> <area>
 ```
 
 Errors must be fixed. Warnings are the deck's answer-shape limits: a card over the limit is

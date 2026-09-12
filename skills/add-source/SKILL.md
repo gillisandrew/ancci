@@ -10,10 +10,20 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash("${CLAUDE_PLUGIN_ROOT}/script
 
 `$ARGUMENTS` is what to read. The kind is worked out from its shape — you never say which.
 
-## 1. Fetch it
+## 1. Pick the deck
+
+A session often sits at the root of a repository holding several decks. List them and pass
+`--deck <name>`; inside a single deck it can be omitted. If more than one is listed and the
+user has not said which, ask — a source filed into the wrong deck is worse than no source.
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/scripts/add-source.py" [--deck <deck>] <source>
+"${CLAUDE_PLUGIN_ROOT}/scripts/decks.py"
+```
+
+## 2. Fetch it
+
+```bash
+"${CLAUDE_PLUGIN_ROOT}/scripts/add-source.py" --deck <name> <source>
 ```
 
 The script prints the kind, a title, the cache path, the `sources:` block to cite, and a
@@ -31,7 +41,7 @@ one that applies before writing the note:
 - **`references/repo.md`** — reading a repository yourself, and citing the commit
 - **`references/pdf.md`** — inferred headings, page citations, and scanned documents
 
-## 2. Distil it into a research note
+## 3. Distil it into a research note
 
 Write `research/<slug>.md` in the deck. This is the file that gets committed, and it is
 what the author skill reads — so it must carry everything a card will need and nothing it
@@ -66,7 +76,7 @@ Rules that make a note worth having:
 - If the material does not suit the deck — wrong audience, wrong scope, too thin — say so
   rather than writing a note nobody should author from.
 
-## 3. Hand off
+## 4. Hand off
 
 Report what was fetched, where the note is, and roughly how many cards it looks worth.
 Then say that the author skill turns it into cards; do not start writing cards here.

@@ -9,14 +9,26 @@ allowed-tools: Read, Glob, Bash("${CLAUDE_PLUGIN_ROOT}/scripts/validate.py" *), 
 
 `$ARGUMENTS` names a single area if given; otherwise the whole deck.
 
-Anki must be running with AnkiConnect installed. Commands find the deck by walking up from
-the working directory, so run them from inside it — or pass `--deck <path>`.
+Anki must be running with AnkiConnect installed.
+
+## Which deck
+
+A session often sits at the root of a repository holding several decks. Never guess which
+one is meant:
+
+```bash
+"${CLAUDE_PLUGIN_ROOT}/scripts/decks.py"
+```
+
+Pass `--deck <name>` to every command below. Inside a single deck it can be omitted. If
+more than one deck is listed and the user has not said which, ask before touching Anki —
+syncing the wrong deck orphans cards in it.
 
 ## Always dry run first
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/scripts/validate.py" [--deck <deck>] [area]
-"${CLAUDE_PLUGIN_ROOT}/scripts/sync.py" [--deck <deck>] [area] --dry-run -v
+"${CLAUDE_PLUGIN_ROOT}/scripts/validate.py" --deck <name> [area]
+"${CLAUDE_PLUGIN_ROOT}/scripts/sync.py" --deck <name> [area] --dry-run -v
 ```
 
 Read the summary line before writing anything:
@@ -37,7 +49,7 @@ If the numbers are surprising, stop and explain them. Do not push to make them g
 ## Then sync
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/scripts/sync.py" [--deck <deck>] [area]
+"${CLAUDE_PLUGIN_ROOT}/scripts/sync.py" --deck <name> [area]
 ```
 
 Validation errors block a sync; warnings do not.

@@ -94,7 +94,8 @@ The skills above are the usual way in. Each script also stands alone — run it 
 a deck, or point it at one with `--deck`:
 
 ```sh
-scripts/add-source.py <url|repo|path>  # fetch a source into the deck's cache
+scripts/decks.py                     # list the decks here, with card counts
+scripts/add-source.py <url|path>     # fetch a source into the deck's cache
 scripts/validate.py                  # schema + answer-shape checks, no Anki needed
 scripts/sync.py --dry-run -v         # show what would change
 scripts/sync.py                      # the whole deck

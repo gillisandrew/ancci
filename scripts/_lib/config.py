@@ -19,7 +19,19 @@ ROOT_CONFIG = "ancci.yaml"
 
 DEFAULT_STYLES = ("definition", "cloze", "footgun", "tradeoff", "pattern")
 
-__all__ = ["DECK_CONFIG", "DEFAULT_STYLES", "ROOT_CONFIG", "ConfigError", "Deck", "DeckConfig", "area_of", "find_deck", "load_deck"]
+__all__ = [
+    "DECK_CONFIG",
+    "DEFAULT_STYLES",
+    "ROOT_CONFIG",
+    "ConfigError",
+    "Deck",
+    "DeckConfig",
+    "area_of",
+    "find_deck",
+    "find_decks",
+    "load_deck",
+    "resolve_deck",
+]
 
 
 class Limits(BaseModel):
@@ -114,6 +126,33 @@ def _merge(base: dict, override: dict) -> dict:
         else:
             out[key] = value
     return out
+
+
+def find_decks(start: Path | None = None) -> list[Deck]:
+    """Every deck at or just below `start`, in name order.
+
+    A repository of decks is the normal shape, so standing at its root and asking what is
+    here should answer rather than fail.
+    """
+    start = (start or Path.cwd()).resolve()
+    if (start / DECK_CONFIG).is_file():
+        return [load_deck(start)]
+    return [load_deck(path.parent) for path in sorted(start.glob(f"*/{DECK_CONFIG}"))]
+
+
+def resolve_deck(spec: str | None = None, start: Path | None = None) -> Deck:
+    """A deck named by path, by name, or by where you are standing."""
+    start = (start or Path.cwd()).resolve()
+    if spec is None:
+        return find_deck(start)
+    path = Path(spec).expanduser()
+    if (path / DECK_CONFIG).is_file():
+        return load_deck(path)
+    # A bare name means a deck in the repository you are standing in.
+    if (start / spec / DECK_CONFIG).is_file():
+        return load_deck(start / spec)
+    names = ", ".join(deck.root.name for deck in find_decks(start))
+    raise ConfigError(f"no deck {spec!r} here. Decks found: {names or '(none)'}")
 
 
 def find_deck(start: Path | None = None) -> Deck:

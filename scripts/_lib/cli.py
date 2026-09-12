@@ -8,13 +8,16 @@ import argparse
 import sys
 from pathlib import Path
 
-from .config import Deck, area_of, find_deck, load_deck
+from .config import Deck, area_of, resolve_deck
 from .errors import AnkiError, ConfigError
 from .schema import CardFile, load
 
 
 def deck_argument(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--deck", help="deck directory (default: the deck containing the working directory)")
+    parser.add_argument(
+        "--deck",
+        help="deck name or directory (default: the deck containing the working directory)",
+    )
 
 
 def target_arguments(parser: argparse.ArgumentParser) -> None:
@@ -23,7 +26,7 @@ def target_arguments(parser: argparse.ArgumentParser) -> None:
 
 def deck_from(args) -> Deck:
     """The deck named by --deck, else the one containing the working directory."""
-    return load_deck(Path(args.deck)) if args.deck else find_deck()
+    return resolve_deck(args.deck)
 
 
 def paths_for(deck: Deck, targets: list[str]) -> tuple[list[Path], list[str]]:
