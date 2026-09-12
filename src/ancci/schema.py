@@ -1,37 +1,21 @@
-"""Card file schema. The YAML files in cards/ are the source of truth for the deck."""
+"""Card file schema. The YAML files in a deck's cards/ directory are its source of truth.
+
+What counts as a valid card is a property of the deck, not of the tool: its styles, its
+answer-shape limits, what it may cite and what tags it uses all come from its config.
+"""
 
 import re
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
-from typing import Literal
-from urllib.parse import urlparse
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
-# Rollout order: new cards are added to Anki, and therefore introduced, in this order.
-AREAS = ("patterns", "api", "tools", "context", "agents", "claude-code", "mcp", "safety")
-STYLES = ("definition", "cloze", "footgun", "tradeoff", "pattern")
-EXTRA_TAGS = ("beta", "migration")
-ORPHAN_TAG = "orphaned"
-TAG_ROOT = "agentic"
+from .config import Deck, DeckConfig, area_of
+from .sources import Source, check, coerce
 
-SOURCE_HOSTS = {
-    "platform.claude.com",
-    "docs.claude.com",
-    "docs.anthropic.com",
-    "code.claude.com",
-    "support.claude.com",
-    "claude.com",
-    "www.claude.com",
-    "anthropic.com",
-    "www.anthropic.com",
-    "modelcontextprotocol.io",
-    "blog.modelcontextprotocol.io",
-    "github.com",
-}
-GITHUB_ORGS = {"anthropics", "modelcontextprotocol"}
+ORPHAN_TAG = "orphaned"
 
 SLUG = r"[a-z0-9]+(?:-[a-z0-9]+)*"
 CLOZE_RE = re.compile(r"\{\{c(\d+)::")
@@ -45,7 +29,7 @@ class Card(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: str
-    style: Literal[STYLES]
+    style: str
     topic: str
     front: str | None = None
     back: str | None = None
@@ -53,8 +37,8 @@ class Card(BaseModel):
     extra: str | None = None
     code: str | None = None
     reverse: bool = False
-    tags: list[Literal[EXTRA_TAGS]] = []
-    sources: list[str] = Field(min_length=1)
+    tags: list[str] = []
+    sources: list[Source] = Field(min_length=1)
     verified: date
 
     @property
@@ -65,8 +49,15 @@ class Card(BaseModel):
     def is_cloze(self) -> bool:
         return self.style == "cloze"
 
-    def anki_tags(self) -> list[str]:
-        return [f"{TAG_ROOT}::{self.area}::{self.topic}", self.style, *self.tags]
+    def anki_tags(self, config: DeckConfig) -> list[str]:
+        return [f"{config.tag_root}::{self.area}::{self.topic}", self.style, *self.tags]
+
+    @field_validator("sources", mode="before")
+    @classmethod
+    def _coerce_sources(cls, values: object) -> object:
+        # A bare string is shorthand for a URL, which is how every card was written
+        # before sources grew types.
+        return [coerce(v) for v in values] if isinstance(values, list) else values
 
     @field_validator("id")
     @classmethod
@@ -81,17 +72,6 @@ class Card(BaseModel):
         if not re.fullmatch(SLUG, value):
             raise ValueError("topic must be a kebab-case slug")
         return value
-
-    @field_validator("sources")
-    @classmethod
-    def _sources_allowed(cls, urls: list[str]) -> list[str]:
-        for url in urls:
-            parsed = urlparse(url)
-            if parsed.scheme != "https" or parsed.hostname not in SOURCE_HOSTS:
-                raise ValueError(f"source is not on the allowlist: {url}")
-            if parsed.hostname == "github.com" and parsed.path.strip("/").split("/")[0] not in GITHUB_ORGS:
-                raise ValueError(f"GitHub sources must be under {sorted(GITHUB_ORGS)}: {url}")
-        return urls
 
     @model_validator(mode="after")
     def _shape(self) -> "Card":
@@ -114,21 +94,37 @@ class Card(BaseModel):
             raise ValueError("code must contain a fenced code block")
         return self
 
-    def warnings(self) -> list[str]:
+    def errors(self, config: DeckConfig) -> list[str]:
+        """Checks that need the deck's config, so they cannot live on the model itself."""
+        out = []
+        if self.style not in config.styles:
+            out.append(f"unknown style '{self.style}'; this deck uses {', '.join(config.styles)}")
+        for tag in self.tags:
+            if tag not in config.tags:
+                out.append(f"unknown tag '{tag}'; this deck uses {', '.join(config.tags) or '(none)'}")
+        out += [problem for source in self.sources if (problem := check(source, config.sources))]
+        return out
+
+    def warnings(self, config: DeckConfig) -> list[str]:
+        limits = config.limits
         out = []
         if self.is_cloze:
             deletions = len(set(CLOZE_RE.findall(self.text)))
-            if deletions > 3:
-                out.append(f"{deletions} cloze deletions; split the card (max 3)")
+            if deletions > limits.cloze_deletions:
+                out.append(f"{deletions} cloze deletions; split the card (max {limits.cloze_deletions})")
         else:
             question = re.sub(r"```.*?```", "", self.front, flags=re.DOTALL)  # pattern snippets don't count
-            if len(question) > 200:
-                out.append(f"front is {len(question)} chars excluding code; condense the question (max 200)")
-            if len(self.back) > 220:
-                out.append(f"back is {len(self.back)} chars; condense to bold verdict + bullets (max 220)")
+            if len(question) > limits.front_chars:
+                out.append(
+                    f"front is {len(question)} chars excluding code; condense the question (max {limits.front_chars})"
+                )
+            if len(self.back) > limits.back_chars:
+                out.append(
+                    f"back is {len(self.back)} chars; condense to bold verdict + bullets (max {limits.back_chars})"
+                )
             bullets = sum(1 for line in self.back.splitlines() if re.match(r"\s*[-*] ", line))
-            if bullets > 3:
-                out.append(f"back has {bullets} bullets (max 3)")
+            if bullets > limits.bullets:
+                out.append(f"back has {bullets} bullets (max {limits.bullets})")
         if self.code and self.code.count("\n") > 25:
             out.append("code block is over 25 lines")
         return out
@@ -137,8 +133,15 @@ class Card(BaseModel):
 class CardFile(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    area: Literal[AREAS]
+    area: str
     cards: list[Card]
+
+    @field_validator("area")
+    @classmethod
+    def _area_shape(cls, value: str) -> str:
+        if not re.fullmatch(SLUG, value):
+            raise ValueError("area must be a kebab-case slug")
+        return value
 
 
 @dataclass(frozen=True)
@@ -163,8 +166,9 @@ def _where(raw: object, loc: tuple) -> str:
     return ".".join(map(str, loc)) or "-"
 
 
-def load(paths: list[Path]) -> tuple[list[CardFile], list[Problem]]:
-    """Parse and validate card files, including cross-file checks (unique ids)."""
+def load(paths: list[Path], deck: Deck) -> tuple[list[CardFile], list[Problem]]:
+    """Parse and validate card files against their deck, including cross-file checks."""
+    config = deck.config
     files: list[CardFile] = []
     problems: list[Problem] = []
     seen: dict[str, Path] = {}
@@ -179,7 +183,8 @@ def load(paths: list[Path]) -> tuple[list[CardFile], list[Problem]]:
         except ValidationError as exc:
             problems.extend(Problem(path, _where(raw, err["loc"]), err["msg"]) for err in exc.errors())
             continue
-        if card_file.area != path.stem:
+        # The NN- prefix orders files and is stripped; the area is the rest of the name.
+        if card_file.area != area_of(path):
             problems.append(Problem(path, "area", f"area '{card_file.area}' must match the file name"))
         for card in card_file.cards:
             if card.area != card_file.area:
@@ -187,6 +192,7 @@ def load(paths: list[Path]) -> tuple[list[CardFile], list[Problem]]:
             if card.id in seen:
                 problems.append(Problem(path, card.id, f"duplicate id (also in {seen[card.id]})"))
             seen[card.id] = path
-            problems.extend(Problem(path, card.id, w, error=False) for w in card.warnings())
+            problems.extend(Problem(path, card.id, e) for e in card.errors(config))
+            problems.extend(Problem(path, card.id, w, error=False) for w in card.warnings(config))
         files.append(card_file)
     return files, problems

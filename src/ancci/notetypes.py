@@ -1,10 +1,16 @@
-"""The deck and note types the sync creates and keeps up to date in Anki."""
+"""The note types the sync creates and keeps up to date in Anki.
+
+Note types are global across an Anki collection, so each deck names its own pair. The
+templates and CSS here are the defaults; a deck overrides them by pointing `templates:`
+at a directory of its own.
+"""
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from pygments.formatters import HtmlFormatter
 
-DECK = "Agentic AI"
+from .config import Deck
 
 
 @dataclass(frozen=True)
@@ -20,38 +26,49 @@ _BACK_MATTER = """
 <div class="provenance">{{Sources}}<span class="verified">verified {{Verified}}</span></div>
 {{#Feedback}}<div class="feedback">{{Feedback}}</div>{{/Feedback}}"""
 
-BASIC = NoteType(
-    name="Agentic Basic",
-    fields=("ID", "Front", "Back", "Code", "Sources", "Verified", "Reverse", "Feedback"),
-    templates={
-        "Card 1": (
-            '<div class="prompt">{{Front}}</div>',
-            '<div class="prompt">{{Front}}</div>\n<hr id="answer">\n<div class="answer">{{Back}}</div>'
-            + _BACK_MATTER,
-        ),
-        "Card 2": (
-            '{{#Reverse}}<div class="kicker">Name it</div><div class="prompt">{{Back}}</div>{{/Reverse}}',
-            '<div class="kicker">Name it</div><div class="prompt">{{Back}}</div>\n<hr id="answer">\n'
-            '<div class="answer">{{Front}}</div>' + _BACK_MATTER,
-        ),
-    },
-    is_cloze=False,
-)
+BASIC_FIELDS = ("ID", "Front", "Back", "Code", "Sources", "Verified", "Reverse", "Feedback")
+CLOZE_FIELDS = ("ID", "Text", "Extra", "Code", "Sources", "Verified", "Feedback")
 
-CLOZE = NoteType(
-    name="Agentic Cloze",
-    fields=("ID", "Text", "Extra", "Code", "Sources", "Verified", "Feedback"),
-    templates={
-        "Cloze": (
-            '<div class="prompt">{{cloze:Text}}</div>',
-            '<div class="prompt">{{cloze:Text}}</div>\n'
-            '{{#Extra}}<hr id="answer"><div class="answer">{{Extra}}</div>{{/Extra}}' + _BACK_MATTER,
-        ),
-    },
-    is_cloze=True,
-)
 
-NOTE_TYPES = (BASIC, CLOZE)
+def basic(name: str) -> NoteType:
+    return NoteType(
+        name=name,
+        fields=BASIC_FIELDS,
+        templates={
+            "Card 1": (
+                '<div class="prompt">{{Front}}</div>',
+                '<div class="prompt">{{Front}}</div>\n<hr id="answer">\n<div class="answer">{{Back}}</div>'
+                + _BACK_MATTER,
+            ),
+            "Card 2": (
+                '{{#Reverse}}<div class="kicker">Name it</div><div class="prompt">{{Back}}</div>{{/Reverse}}',
+                '<div class="kicker">Name it</div><div class="prompt">{{Back}}</div>\n<hr id="answer">\n'
+                '<div class="answer">{{Front}}</div>' + _BACK_MATTER,
+            ),
+        },
+        is_cloze=False,
+    )
+
+
+def cloze(name: str) -> NoteType:
+    return NoteType(
+        name=name,
+        fields=CLOZE_FIELDS,
+        templates={
+            "Cloze": (
+                '<div class="prompt">{{cloze:Text}}</div>',
+                '<div class="prompt">{{cloze:Text}}</div>\n'
+                '{{#Extra}}<hr id="answer"><div class="answer">{{Extra}}</div>{{/Extra}}' + _BACK_MATTER,
+            ),
+        },
+        is_cloze=True,
+    )
+
+
+def note_types(deck: Deck) -> tuple[NoteType, NoteType]:
+    names = deck.config.note_types
+    return basic(names.basic), cloze(names.cloze)
+
 
 _BASE_CSS = """
 .card {
@@ -98,3 +115,12 @@ CSS = "\n".join(
         ".card pre code, .nightMode pre code, .night_mode pre code { background: transparent; padding: 0; font-size: .82em; }",
     ]
 )
+
+
+def css_for(deck: Deck) -> str:
+    """A deck's own styling if it ships any, else the default."""
+    if deck.config.templates:
+        override = Path(deck.root, deck.config.templates, "cards.css")
+        if override.is_file():
+            return override.read_text()
+    return CSS

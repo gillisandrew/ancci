@@ -1,8 +1,5 @@
 """Render card Markdown into the HTML stored in Anki fields."""
 
-import html
-from urllib.parse import urlparse
-
 from markdown_it import MarkdownIt
 from pygments import highlight
 from pygments.formatters import HtmlFormatter
@@ -10,6 +7,7 @@ from pygments.lexers import get_lexer_by_name
 from pygments.util import ClassNotFound
 
 from .schema import Card
+from .sources import Source, link
 
 LEXER_ALIASES = {"pseudo": "python", "pseudocode": "python"}
 
@@ -30,13 +28,8 @@ def markdown(text: str | None) -> str:
     return _md.render(text).strip() if text else ""
 
 
-def sources_html(urls: list[str]) -> str:
-    links = []
-    for url in urls:
-        parsed = urlparse(url)
-        label = f"{parsed.hostname}{parsed.path.rstrip('/')}"
-        links.append(f'<a href="{html.escape(url)}">{html.escape(label)}</a>')
-    return " · ".join(links)
+def sources_html(sources: list[Source]) -> str:
+    return " · ".join(link(source) for source in sources)
 
 
 def fields(card: Card) -> dict[str, str]:
