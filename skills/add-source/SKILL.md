@@ -1,8 +1,8 @@
 ---
 name: add-source
-description: Fetches a source into a deck - a web page, YouTube video, GitHub repository, PDF, EPUB or text file - and distils it into a research note the author skill can write cards from. Use when someone says "add this source", "read this page", "ingest this video", "pull in these docs" or pastes a link to study from.
+description: Fetches a source into a deck - a web page, YouTube video, PDF, EPUB or text file - and distils it into a research note the author skill can write cards from. Use when someone says "add this source", "read this page", "ingest this video", "pull in these docs" or pastes a link to study from.
 disable-model-invocation: true
-argument-hint: "<url | owner/repo | path>"
+argument-hint: "<url | path>"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash("${CLAUDE_PLUGIN_ROOT}/scripts/add-source.py" *), Bash("${CLAUDE_PLUGIN_ROOT}/scripts/validate.py" *)
 ---
 
@@ -20,15 +20,15 @@ The script prints the kind, a title, the cache path, the `sources:` block to cit
 preview. The extracted text is cached under `.ancci/` and **is not committed** — it is
 often large and always noisy. Read it from the cache path it prints.
 
-Useful flags: `--ref` pins a repository to a commit, `--pages` limits a long PDF,
-`--language` picks a caption track, `--refresh` re-fetches something already cached.
+Useful flags: `--pages` limits a long PDF, `--language` picks a caption track, `--refresh`
+re-fetches something already cached.
 
 Each source type has its own failure modes and its own way of being cited well. Read the
 one that applies before writing the note:
 
 - **`references/web.md`** — docs sites, code fences, and pages that need a browser
 - **`references/video.md`** — transcripts, timestamps, and auto-caption hazards
-- **`references/repo.md`** — what gets cloned, what gets skipped, pinning a commit
+- **`references/repo.md`** — reading a repository yourself, and citing the commit
 - **`references/pdf.md`** — inferred headings, page citations, and scanned documents
 
 ## 2. Distil it into a research note

@@ -30,7 +30,7 @@ USER_AGENT = "ancci/0.1 (+https://github.com/gillisandrew/ancci)"
 
 LANG_CLASS = re.compile(r"^(?:language|lang|highlight)-([\w+#.-]+)$")
 # Page furniture that carries no content and only adds noise to a research note.
-FURNITURE = ("script", "style", "nav", "header", "footer", "aside", "noscript", "form")
+FURNITURE = ("script", "style", "nav", "header", "footer", "aside", "noscript", "form", "svg")
 UNDERSTOOD = ("language-", "lang-")
 
 
@@ -41,6 +41,21 @@ def _language_near(element) -> str | None:
             if match := LANG_CLASS.match(name):
                 return match.group(1)
     return None
+
+
+def strip_images(soup: BeautifulSoup) -> int:
+    """Replace images with their alt text, or drop them.
+
+    An EPUB cover arrives as `<img src="data:image/svg+xml;base64,…">`, which converts to a
+    Markdown image carrying the entire encoded file — kilobytes of noise in a research note
+    nobody can read. Alt text is the only part that ever carried meaning.
+    """
+    removed = 0
+    for image in soup.find_all("img"):
+        alt = (image.get("alt") or "").strip()
+        image.replace_with(alt) if alt else image.decompose()
+        removed += 1
+    return removed
 
 
 def strip_line_anchors(soup: BeautifulSoup) -> int:
@@ -80,6 +95,7 @@ def to_markdown(html: str) -> tuple[str, str | None]:
     soup = BeautifulSoup(html, "html.parser")
     for element in soup.find_all(FURNITURE):
         element.decompose()
+    strip_images(soup)
     strip_line_anchors(soup)
     tag_code_languages(soup)
 

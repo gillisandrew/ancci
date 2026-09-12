@@ -16,7 +16,7 @@ Decks live in their own repositories. This one holds only the tooling.
 | skill | what it does |
 |---|---|
 | `/ancci:new-deck` | scaffolds a deck after settling subject, audience and card styles |
-| `/ancci:add-source` | reads a page, video, repo, PDF, EPUB or file into a research note |
+| `/ancci:add-source` | reads a page, video, PDF, EPUB or file into a research note |
 | `/ancci:author` | writes cards from a deck's research notes, sample batch first |
 | `/ancci:review` | gathers what you flagged while studying, helps fix it, clears the flags |
 | `/ancci:sync` | validates and pushes a deck into Anki, dry run first |

@@ -15,6 +15,20 @@ This is a heuristic and it is wrong sometimes — a pull quote becomes a heading
 section title stays body text. **Do not trust the heading structure as if it were real.**
 Read the surrounding text to work out what a section is actually about.
 
+## Word spacing is reconstructed, not read
+
+Many PDFs place each character at a coordinate instead of writing spaces. Extraction has to
+infer where one word ends and the next begins, from the gaps.
+
+That inference is tuned relative to font size and works well — measured on a LaTeX paper it
+took run-together text from 24% of tokens down to none — but it is still inference. Its one
+visible artefact is that a hyphenated compound sometimes gains spaces around the hyphen
+(`Transformer-model` reading as `Transformer - model`).
+
+So when a card turns on an exact string — an identifier, a flag, a hyphenated term — check
+it against the PDF itself rather than trusting the extracted text. If you cannot, write the
+card around the idea instead of the exact spelling.
+
 ## Cite the page
 
 Every page is marked in the extracted text:

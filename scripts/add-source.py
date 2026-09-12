@@ -52,8 +52,7 @@ def citation_block(fetched) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(prog="ancci add-source", description=__doc__)
     deck_argument(parser)
-    parser.add_argument("source", help="URL, YouTube link, owner/repo, or a path to a PDF, EPUB or text file")
-    parser.add_argument("--ref", help="repositories only: branch, tag or commit to read (default: the default branch)")
+    parser.add_argument("source", help="URL, YouTube link, or a path to a PDF, EPUB or text file")
     parser.add_argument("--pages", type=int, help="PDFs only: read just the first N pages")
     parser.add_argument("--language", default="en", help="videos only: caption language (default: en)")
     parser.add_argument("--refresh", action="store_true", help="fetch again even if it is already cached")
@@ -64,8 +63,6 @@ def main() -> int:
     destination = cached_text(deck.root, args.source)
 
     options = {}
-    if kind == "repo" and args.ref:
-        options["ref"] = args.ref
     if kind == "pdf" and args.pages:
         options["pages"] = args.pages
     if kind == "video":

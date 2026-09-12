@@ -9,7 +9,6 @@ import pytest
 from bs4 import BeautifulSoup
 
 from _lib.fetch import detect
-from _lib.fetch.repo import parse_repo
 from _lib.fetch.types import FetchError, Fetched
 from _lib.fetch.video import to_windows
 from _lib.fetch.web import tag_code_languages, to_markdown
@@ -25,14 +24,13 @@ def test_detect_reads_the_shape_of_what_it_is_given(tmp_path):
     assert detect("https://example.com/docs/page") == "url"
     assert detect("https://www.youtube.com/watch?v=abc") == "video"
     assert detect("https://youtu.be/abc") == "video"
-    assert detect("https://github.com/anthropics/claude-code") == "repo"
-    assert detect("anthropics/claude-code") == "repo"
     assert detect(str(pdf)) == "pdf"
     assert detect(str(notes)) == "file"
 
 
-def test_a_page_inside_a_repo_is_a_page_not_the_repo():
-    # Only github.com/owner/name is the repository; anything deeper is something to read.
+def test_a_github_url_is_just_a_page():
+    # There is no repository acquirer; a repo URL renders its README like any other page.
+    assert detect("https://github.com/anthropics/claude-code") == "url"
     assert detect("https://github.com/anthropics/claude-code/blob/main/README.md") == "url"
 
 
@@ -41,13 +39,9 @@ def test_detect_refuses_what_it_cannot_place():
         detect("./nothing-here")
 
 
-def test_parse_repo_accepts_slugs_and_urls():
-    for spec in (
-        "anthropics/claude-code",
-        "https://github.com/anthropics/claude-code",
-        "git@github.com:anthropics/claude-code.git",
-    ):
-        assert parse_repo(spec) == "anthropics/claude-code"
+def test_a_bare_repo_slug_says_to_clone_it():
+    with pytest.raises(FetchError, match="clone it"):
+        detect("anthropics/claude-code")
 
 
 # Measured against html-to-markdown 3.12.4: it reads `language-`/`lang-` off <pre> or
@@ -98,6 +92,18 @@ def test_line_number_anchors_do_not_leak_into_code():
 def test_a_link_with_text_inside_a_code_block_keeps_its_text():
     text, _ = to_markdown('<pre><code><a href="https://example.com">see this</a> matters</code></pre>')
     assert "see this matters" in text
+
+
+def test_images_never_leak_a_data_uri():
+    # An EPUB cover is a base64 SVG; converted naively it puts the whole encoded file in
+    # the note. Alt text is the only part worth keeping.
+    html = (
+        '<p><img alt="A diagram" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0i"></p>'
+        '<p><img src="data:image/png;base64,iVBORw0KGgo="></p>'
+    )
+    text, _ = to_markdown(html)
+    assert "base64" not in text
+    assert "A diagram" in text
 
 
 def test_page_furniture_is_dropped():

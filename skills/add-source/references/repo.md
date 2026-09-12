@@ -1,48 +1,46 @@
-# GitHub repositories
+# Repositories
 
-Accepts `owner/name` or a repository URL. A URL pointing *inside* a repository — a blob, a
-file, a pull request — is treated as a web page instead, which is usually what you want.
+There is no repository acquirer, on purpose. Cloning a repository and reading its files is
+something you already do well, and a fetcher wrapping it would only add guesses about where
+the documentation lives and how much of it to take.
 
-## What actually gets downloaded
+## Read it directly
 
-A partial clone (`--filter=blob:none`) with a sparse checkout, so blobs arrive only for the
-paths worth reading. On a large repository this is a few megabytes rather than tens.
+```bash
+git clone --depth 1 --filter=blob:none https://github.com/<owner>/<name> /tmp/<name>
+```
 
-Collected, in this order:
+Then read what is actually there. Documentation usually sits in `docs/`, sometimes in
+`site/`, `handbook/` or `website/docs/`, and the README is often the best single page. Look
+before assuming — `mkdocs.yml`, `docusaurus.config.*` or `conf.py` name the docs directory
+outright when they exist.
 
-- Root files: `README`, `CONTRIBUTING`, `ARCHITECTURE`, `CHANGELOG`
-- `docs/`, `doc/`, `documentation/`, `guide/`, `guides/`, `website/docs/`
-- Only `.md`, `.markdown`, `.mdx`, `.rst`, `.txt`
+Take the parts that suit the deck rather than everything. A research note distilled from
+four relevant pages beats one distilled from an entire documentation set.
 
-Each file appears under a `## <path>` heading, so you always know which file a fact came
-from. Collection stops at roughly 400,000 characters — for a big documentation set you are
-reading a prefix, not the whole thing. Say so in the note if it was truncated.
+## Pin the commit you read
 
-**Source code is not collected.** This reads documentation. If a card needs to be about
-actual implementation, fetch the specific file as a web page instead.
+A branch moves; what you read does not. Record the exact commit:
 
-## Pin the commit
+```bash
+git -C /tmp/<name> rev-parse HEAD
+```
 
-The ref is resolved to a full commit sha before anything is read, and that sha is what gets
-cited:
+Then cite it, naming the file a fact came from:
 
 ```yaml
 sources:
   - type: repo
     repo: anthropics/claude-code
-    ref: 9fab82e1c0...
+    ref: 9fab82e1c0d4...
     path: docs/hooks.md
 ```
 
-Add `path` yourself when a fact came from one file — the fetch records the repository and
-the commit, and you know which file you read it in.
+This matters more than it looks: "main" in six months is not the thing you read, and a card
+whose citation cannot be checked is a card nobody can fix later.
 
-Use `--ref` to read a tag or an older commit. Without it you get the default branch as it
-is right now, which is the correct default and also the reason the sha matters: "main" in
-six months is not the thing you read.
+## A single file is just a page
 
-## When it fails
-
-A private or missing repository fails at `ls-remote`. A repository with no documentation
-directories reports that it found none — worth checking whether the docs live somewhere
-unusual (`site/`, `handbook/`) and fetching those pages directly instead.
+To read one rendered file rather than clone, pass its URL to `add-source.py` — a GitHub URL
+is fetched as an ordinary web page, which for a repository root gives you the rendered
+README.

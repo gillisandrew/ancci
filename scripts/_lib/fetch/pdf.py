@@ -23,6 +23,14 @@ from .types import Fetched, FetchError
 H1_RATIO = 1.45
 H2_RATIO = 1.20
 
+# Many PDFs - LaTeX output especially - position characters rather than emitting space
+# glyphs, and pdfplumber's default word gap then merges whole sentences into one token.
+# Measured on arXiv 1706.03762: 24.4% of tokens ran together by default, 0% with an
+# explicit tolerance. The ratio form scales with font size, so it neither over-splits a
+# heading nor under-splits small print. It occasionally spaces out a hyphenated compound
+# ("Transformer-model" -> "Transformer - model"), which is a good trade for readable text.
+X_TOLERANCE_RATIO = 0.15
+
 
 def _title(path: Path) -> str:
     try:
@@ -41,7 +49,7 @@ def _body_size(sizes: Counter) -> float:
 def _lines(page) -> list[tuple[str, float]]:
     """Page text as (line, max font size on that line)."""
     out: list[tuple[str, float]] = []
-    for line in page.extract_text_lines(strip=True) or []:
+    for line in page.extract_text_lines(strip=True, x_tolerance_ratio=X_TOLERANCE_RATIO) or []:
         text = line.get("text", "").strip()
         if not text:
             continue
