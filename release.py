@@ -18,6 +18,7 @@ spacing and key order survive untouched.
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -48,7 +49,10 @@ def git(*args: str, check: bool = True) -> str:
 
 def shell(label: str, *args: str) -> None:
     print(f"  {label}…", end=" ", flush=True)
-    result = subprocess.run(args, cwd=ROOT, capture_output=True, text=True)
+    # This script runs in a uv environment of its own. Leaking VIRTUAL_ENV into the
+    # project's tooling makes uv warn on every release about an env it then ignores.
+    env = {key: value for key, value in os.environ.items() if key != "VIRTUAL_ENV"}
+    result = subprocess.run(args, cwd=ROOT, capture_output=True, text=True, env=env)
     if result.returncode != 0:
         print("failed")
         print((result.stdout + result.stderr).strip()[-1500:], file=sys.stderr)
