@@ -16,6 +16,7 @@ Decks live in their own repositories. This one holds only the tooling.
 | skill | what it does |
 |---|---|
 | `/ancci:new-deck` | scaffolds a deck after settling subject, audience and card styles |
+| `/ancci:add-source` | reads a page, video, repo, PDF, EPUB or file into a research note |
 | `/ancci:author` | writes cards from a deck's research notes, sample batch first |
 | `/ancci:review` | gathers what you flagged while studying, helps fix it, clears the flags |
 | `/ancci:sync` | validates and pushes a deck into Anki, dry run first |
@@ -93,6 +94,7 @@ The skills above are the usual way in. Each script also stands alone — run it 
 a deck, or point it at one with `--deck`:
 
 ```sh
+scripts/add-source.py <url|repo|path>  # fetch a source into the deck's cache
 scripts/validate.py                  # schema + answer-shape checks, no Anki needed
 scripts/sync.py --dry-run -v         # show what would change
 scripts/sync.py                      # the whole deck
