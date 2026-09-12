@@ -162,4 +162,10 @@ you which decks it found rather than guess at one.
 
 ```sh
 uv run pytest
+./release.py 0.4.0 --dry-run   # what a release would do
+./release.py 0.4.0             # bump both manifests, validate, test, commit, tag, push
 ```
+
+The version lives in `plugin.json` *and* `marketplace.json`, and an installed copy is
+cached by version — so a push without a bump reaches nobody. `release.py` owns both files
+and refuses to run on a dirty tree, a non-increasing version, or manifests that disagree.
