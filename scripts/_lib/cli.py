@@ -54,10 +54,9 @@ def load_files(deck: Deck, targets: list[str]) -> tuple[list[CardFile], int]:
     files, problems = load(paths, deck)
     for problem in problems:
         print(problem, file=sys.stderr)
-    errors = len(missing) + sum(p.error for p in problems)
-    warnings = len(problems) - sum(p.error for p in problems)
+    errors = len(missing) + len(problems)
     total = sum(len(f.cards) for f in files)
-    print(f"{total} cards in {len(files)} files: {errors} errors, {warnings} warnings")
+    print(f"{total} cards in {len(files)} files: {errors} errors")
     return files, errors
 
 

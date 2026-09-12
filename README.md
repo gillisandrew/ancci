@@ -62,7 +62,7 @@ note_types:                 # optional; defaults to "<name> Basic" / "<name> Clo
 # Card types. ancci ships `basic` and `cloze`; every other name is the deck's own.
 # A bare name here gets the `basic` contract — unless it names a shipped type, which
 # keeps that type's contract.
-styles: [definition, footgun, tradeoff, pattern]
+types: [definition, footgun, tradeoff, pattern]
 
 card_types:                 # optional; a type declaring its own contract
   oral:
@@ -73,13 +73,7 @@ card_types:                 # optional; a type declaring its own contract
     fields: [Audio]         # extra Anki fields, written as `fields:` on a card
 
 tags: [beta, migration]     # optional; extra tags a card may carry
-templates: templates/       # optional; a directory of Anki templates and CSS of your own
-
-limits:                     # optional; these only ever warn
-  back_chars: 220
-  front_chars: 200
-  bullets: 3
-  cloze_deletions: 3
+css: cards.css              # optional; a stylesheet of your own
 
 sources:                    # optional; omit `hosts` to accept any URL
   hosts: [platform.claude.com, anthropic.com]
@@ -87,25 +81,15 @@ sources:                    # optional; omit `hosts` to accept any URL
   require_https: true
 ```
 
-### Replacing the card templates
+### Restyling a deck
 
-`templates:` points at a directory of your own. Ship any subset of these; whatever you
-leave out keeps the template ancci ships.
+`css: cards.css` points at a stylesheet of your own, replacing the shipped one. That is
+enough to change type, colour, spacing, or how a declared field is presented — an `.ipa`
+class for a phonetic transcription, sizing for a diagram.
 
-```
-<deck>/templates/
-  basic.front.html          basic.back.html
-  basic-reverse.front.html  basic-reverse.back.html   # the "Name it" card
-  cloze.front.html          cloze.back.html
-  cards.css
-```
-
-They are Anki templates, so `{{Front}}`, `{{Back}}`, `{{cloze:Text}}`, `{{Code}}`,
-`{{Sources}}`, `{{Verified}}` and `{{Feedback}}` are the fields available. An empty file is
-an error rather than a blank card side.
-
-Reach for this only when CSS genuinely cannot do it — `cards.css` alone restyles a deck
-completely, and it cannot break the fields a card depends on.
+The card templates themselves are the tool's. A deck adds *content* through `fields:` on a
+card type, and Anki renders a field only when it is non-empty, so a field that most cards
+leave blank costs nothing on the ones that do.
 
 A repo holding several decks can put shared house style in a root `ancci.yaml` using the
 same keys; each deck inherits it and overrides only what differs.

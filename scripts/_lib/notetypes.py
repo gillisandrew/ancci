@@ -5,8 +5,9 @@ declare more than the two it gets by default; card types say which one they land
 note type's field list is the built-ins for its shape plus whatever fields the card types
 using it declare.
 
-The templates and CSS here are the defaults; a deck overrides them by pointing `templates:`
-at a directory of its own.
+The card templates are the tool's. A deck restyles them with a stylesheet of its own,
+pointed at by `css:` — which is enough to change type, colour, spacing, or how a declared
+field like a phonetic transcription or a diagram is presented.
 """
 
 from dataclasses import dataclass, replace
@@ -15,7 +16,6 @@ from pathlib import Path
 from pygments.formatters import HtmlFormatter
 
 from .config import Deck
-from .errors import ConfigError
 
 
 @dataclass(frozen=True)
@@ -73,41 +73,6 @@ def cloze(name: str) -> NoteType:
     )
 
 
-# Which file overrides which side of which card. A deck may ship any subset; whatever it
-# leaves out keeps the template shipped here.
-#
-#   <templates>/basic.front.html          basic.back.html
-#   <templates>/basic-reverse.front.html  basic-reverse.back.html   (the "Name it" card)
-#   <templates>/cloze.front.html          cloze.back.html
-#   <templates>/cards.css
-TEMPLATE_STEMS = {"Card 1": "basic", "Card 2": "basic-reverse", "Cloze": "cloze"}
-
-
-def _override(deck: Deck, stem: str, side: str) -> str | None:
-    """A deck's own HTML for one side of one card, if it ships any."""
-    if not deck.config.templates:
-        return None
-    path = Path(deck.root, deck.config.templates, f"{stem}.{side}.html")
-    if not path.is_file():
-        return None
-    html = path.read_text().strip()
-    if not html:
-        # Anki would accept this and render a blank side on every card of the type.
-        raise ConfigError(f"{path} is empty; delete it to use the shipped template")
-    return html
-
-
-def _overridden(nt: NoteType, deck: Deck) -> NoteType:
-    templates = {}
-    for name, (front, back) in nt.templates.items():
-        stem = TEMPLATE_STEMS[name]
-        templates[name] = (
-            _override(deck, stem, "front") or front,
-            _override(deck, stem, "back") or back,
-        )
-    return replace(nt, templates=templates)
-
-
 def _with_fields(nt: NoteType, extra: list[str]) -> NoteType:
     """Insert a deck's own fields before `Feedback`, so `Feedback` stays last."""
     if not extra:
@@ -118,7 +83,7 @@ def _with_fields(nt: NoteType, extra: list[str]) -> NoteType:
 
 def is_cloze_note_type(deck: Deck, key: str) -> bool:
     """A note type is cloze if any card type landing on it is."""
-    return any(t.cloze for t in deck.config.types().values() if t.note_type == key)
+    return any(t.cloze for t in deck.config.card_type_map().values() if t.note_type == key)
 
 
 def note_types(deck: Deck) -> dict[str, NoteType]:
@@ -126,7 +91,7 @@ def note_types(deck: Deck) -> dict[str, NoteType]:
     built: dict[str, NoteType] = {}
     for key, model_name in deck.config.note_types.items():
         shape = cloze(model_name) if is_cloze_note_type(deck, key) else basic(model_name)
-        built[key] = _overridden(_with_fields(shape, deck.config.fields_for(key)), deck)
+        built[key] = _with_fields(shape, deck.config.fields_for(key))
     return built
 
 
@@ -178,9 +143,9 @@ CSS = "\n".join(
 
 
 def css_for(deck: Deck) -> str:
-    """A deck's own styling if it ships any, else the default."""
-    if deck.config.templates:
-        override = Path(deck.root, deck.config.templates, "cards.css")
+    """A deck's own stylesheet if it ships one, else the default."""
+    if deck.config.css:
+        override = Path(deck.root, deck.config.css)
         if override.is_file():
             return override.read_text()
     return CSS

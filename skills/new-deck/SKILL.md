@@ -1,6 +1,6 @@
 ---
 name: new-deck
-description: Scaffolds a new ancci deck - deck.yaml, AUTHORING.md, cards/ and research/ - after settling what the deck is about, who is studying it and what card styles it needs. Use when someone says "start a new deck", "make a deck about X", "set up a deck" or "scaffold a deck".
+description: Scaffolds a new ancci deck - deck.yaml, AUTHORING.md, cards/ and research/ - after settling what the deck is about, who is studying it and what card types it needs. Use when someone says "start a new deck", "make a deck about X", "set up a deck" or "scaffold a deck".
 disable-model-invocation: true
 argument-hint: "[subject]"
 allowed-tools: Read, Write, Edit, Glob, Bash("${CLAUDE_PLUGIN_ROOT}/scripts/validate.py" *)
@@ -31,7 +31,7 @@ should be called or where they go if the answer is obvious from the surrounding 
    practitioner share no cards.
 3. **Card types** — ancci ships only `basic` and `cloze`; every other name is the deck's
    own. Propose type names that fit the material (a language deck might want `conjugation`;
-   a cooking deck `technique`, `ratio`) and list them under `styles:`, which gives each the
+   a cooking deck `technique`, `ratio`) and list them under `types:`, which gives each the
    default shape: `front` and `back` required, `code` and `reverse` optional.
 
    A type needing more than that goes under `card_types:` instead, where it declares its own
@@ -52,7 +52,7 @@ should be called or where they go if the answer is obvious from the surrounding 
 ```
 
 One file. `deck.yaml` carries the machine-checkable settings — `name`, `tag_root`,
-`styles`, `tags`, `limits`, `sources`, and `note_types` if the defaults (`<name> Basic` /
+`types`, `tags`, `sources`, and `note_types` if the defaults (`<name> Basic` /
 `<name> Cloze`) are not wanted — plus the three lines of prose that change what a good card
 looks like:
 

@@ -20,16 +20,16 @@ pass `--deck <name>` to every command below:
 ```
 
 Inside a single deck, `--deck` can be omitted. If more than one is listed and the user has
-not said which, ask. Each deck has its own styles and voice, so cards written for the wrong
+not said which, ask. Each deck has its own types and voice, so cards written for the wrong
 one are wrong cards.
 
 ## Read the deck first
 
 Never write a card before reading, in this order:
 
-1. **`deck.yaml`** — the types this deck has, its limits, what it may cite, and usually
+1. **`deck.yaml`** — the types this deck has, what it may cite, and usually
    all the prose there is: `audience` (what the reader already knows, so a card never
-   explains it), `scope` (what belongs on a card) and `avoid` (what does not). A style not
+   explains it), `scope` (what belongs on a card) and `avoid` (what does not). A type not
    listed is an error, not a suggestion.
 2. **A root `ancci.yaml` and `AUTHORING.md` above the deck**, if present — house style
    shared by every deck in the repository. The deck's own settings override them.
@@ -46,7 +46,7 @@ Never write a card before reading, in this order:
 **Which keys a card may carry comes from its type, and the deck declares its types.** Read
 `deck.yaml` before writing anything:
 
-- `styles:` lists type names using the default shape — `front` and `back` required, `code`
+- `types:` lists type names using the default shape — `front` and `back` required, `code`
   and `reverse` optional.
 - `card_types:` declares types with their own contract: `requires`, `optional`, `cloze`,
   and `fields` for extra Anki fields of the deck's own.
@@ -61,7 +61,7 @@ does not list is an error too — so do not reach for `code` on a type that neve
 area: extraction              # matches the file name with its NN- prefix stripped
 cards:
   - id: extraction.bloom      # <area>.<kebab-slug>, permanent once synced
-    type: technique           # a type the deck declares; `style:` means the same thing
+    type: technique           # a type the deck declares
     topic: pour-over          # kebab-case; becomes <tag_root>::<area>::<topic>
     front: |                  # whichever keys this type requires and allows
     back: |
@@ -89,6 +89,10 @@ discover later. Wait for the answer; do not treat silence as approval.
 
 ## Writing rules that hold for every deck
 
+- **Length is your judgement, and nothing checks it.** The validator has no opinion on how
+  long an answer is — it only knows whether a card is valid. An answer that will not fit is
+  almost always two cards rather than one card to cram, and the deck's `AUTHORING.md` says
+  what its house style expects.
 - **One fact per card.** If the answer needs "and also", it is two cards.
 - **Self-contained prompts.** A card is read months later with no context around it.
 - **No guessable prompts.** No yes/no questions; no prompt whose wording gives away its
@@ -108,6 +112,6 @@ discover later. Wait for the answer; do not treat silence as approval.
 "${CLAUDE_PLUGIN_ROOT}/scripts/validate.py" --deck <name> <area>
 ```
 
-Errors must be fixed. Warnings are the deck's answer-shape limits: a card over the limit is
-usually testing two facts, so prefer splitting it over cramming it. Report the counts, and
-mention that the sync skill pushes the cards into Anki when they are ready.
+Errors must be fixed; there are no warnings. Nothing checks how long an answer is — a card
+that sprawls is usually testing two facts, so split it rather than cram it. Report the
+count, and mention that the sync skill pushes the cards into Anki when they are ready.

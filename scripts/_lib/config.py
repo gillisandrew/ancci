@@ -31,13 +31,9 @@ RESERVED_FIELDS = frozenset(
     {"ID", "Front", "Back", "Text", "Extra", "Code", "Sources", "Verified", "Reverse", "Feedback"}
 )
 
-# Names the shipped types answer to. A deck lists the rest itself.
-DEFAULT_STYLES = ("basic", "cloze")
-
 __all__ = [
     "BUILTIN_KEYS",
     "DECK_CONFIG",
-    "DEFAULT_STYLES",
     "RESERVED_FIELDS",
     "ROOT_CONFIG",
     "SHIPPED_TYPES",
@@ -45,8 +41,6 @@ __all__ = [
     "ConfigError",
     "Deck",
     "DeckConfig",
-    "FieldLimit",
-    "Limits",
     "SourceRules",
     "area_of",
     "find_deck",
@@ -54,30 +48,6 @@ __all__ = [
     "load_deck",
     "resolve_deck",
 ]
-
-
-class FieldLimit(BaseModel):
-    """A warning threshold for one field. Unset means unchecked."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    chars: int | None = None
-    bullets: int | None = None
-    deletions: int | None = None
-
-
-class Limits(BaseModel):
-    """Answer-shape warnings. These never fail a build; they flag cards to condense."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    back_chars: int = 220
-    front_chars: int = 200
-    bullets: int = 3
-    cloze_deletions: int = 3
-    # Per field, keyed by a built-in key or a deck-declared field name. A limit naming a
-    # field the type does not have is simply not checked.
-    fields: dict[str, FieldLimit] = {}
 
 
 class SourceRules(BaseModel):
@@ -101,7 +71,8 @@ class CardType(BaseModel):
     cloze: bool = False
     requires: list[str] = []
     optional: list[str] = []
-    # Extra Anki fields this type adds, beyond the ones ancci writes itself.
+    # Extra Anki fields this type adds, beyond the ones ancci writes itself. This is how a
+    # card carries audio, an image, or anything else the built-in keys do not cover.
     fields: list[str] = []
 
     @model_validator(mode="after")
@@ -118,11 +89,6 @@ class CardType(BaseModel):
         if self.cloze and "text" not in named:
             raise ValueError("a cloze type must accept `text`")
         return self
-
-    @property
-    def keys(self) -> set[str]:
-        """Every built-in key this type allows."""
-        return {k for k in (*self.requires, *self.optional) if k in BUILTIN_KEYS}
 
     def missing(self, present: set[str]) -> list[str]:
         return sorted(k for k in self.requires if k not in present)
@@ -161,16 +127,16 @@ class DeckConfig(BaseModel):
     # Bare type names using the shipped `basic` contract. A name matching a shipped type
     # resolves to that type instead — without which a deck listing `cloze` here would route
     # its cloze cards onto the basic note type, which Anki cannot do in place.
-    styles: list[str] = []
+    types: list[str] = []
     # Types declaring their own contract. These override anything above.
     card_types: dict[str, CardType] = {}
 
     # Extra tags a card may carry beyond its type and topic. Deck vocabulary, not universal.
     tags: list[str] = ["beta", "migration"]
-    limits: Limits = Limits()
     sources: SourceRules = SourceRules()
-    # Directory of Anki templates and CSS overriding the shipped ones, relative to the deck.
-    templates: str | None = None
+    # A stylesheet of this deck's own, relative to the deck. Restyling is all a deck needs;
+    # the card templates themselves are the tool's.
+    css: str | None = None
 
     @model_validator(mode="after")
     def _defaults(self) -> "DeckConfig":
@@ -186,10 +152,10 @@ class DeckConfig(BaseModel):
                 )
         return self
 
-    def types(self) -> dict[str, CardType]:
+    def card_type_map(self) -> dict[str, CardType]:
         """Every card type this deck has: the shipped floor, its bare names, its own."""
         resolved = dict(SHIPPED_TYPES)
-        for name in self.styles:
+        for name in self.types:
             # A shipped name keeps its shipped contract; anything else gets `basic`.
             resolved.setdefault(name, SHIPPED_TYPES["basic"])
         resolved.update(self.card_types)
@@ -198,7 +164,7 @@ class DeckConfig(BaseModel):
     def fields_for(self, note_type_key: str) -> list[str]:
         """The deck-declared fields landing on one note type, in declaration order."""
         seen: list[str] = []
-        for card_type in self.types().values():
+        for card_type in self.card_type_map().values():
             if card_type.note_type != note_type_key:
                 continue
             for name in card_type.fields:

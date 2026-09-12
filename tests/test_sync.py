@@ -108,7 +108,7 @@ class FakeAnki:
 def card(card_id, **overrides):
     base = {
         "id": card_id,
-        "style": "footgun",
+        "type": "footgun",
         "topic": "caching",
         "front": "Why is the cache hit rate zero?",
         "back": "A timestamp at the top of the system prompt changes the prefix every request.",
@@ -125,7 +125,7 @@ def cards_file(area, *cards):
 def test_first_sync_adds_and_second_is_a_no_op():
     anki = FakeAnki()
     files = [
-        cards_file("context", card("context.a"), card("context.b", style="cloze", front=None, back=None, text="{{c1::x}}"))
+        cards_file("context", card("context.a"), card("context.b", type="cloze", front=None, back=None, text="{{c1::x}}"))
     ]
     result, errors = sync(anki, DECK, files, {"context"})
     assert (len(result.adds), errors) == (2, [])
@@ -176,10 +176,10 @@ def test_syncing_one_area_never_orphans_another():
     assert result.orphans == []
 
 
-def test_changing_card_kind_is_a_conflict_not_an_update():
+def test_changing_card_type_is_a_conflict_not_an_update():
     anki = FakeAnki()
     sync(anki, DECK, [cards_file("context", card("context.a"))], {"context"})
-    cloze = card("context.a", style="cloze", front=None, back=None, text="{{c1::x}}")
+    cloze = card("context.a", type="cloze", front=None, back=None, text="{{c1::x}}")
     result, _ = sync(anki, DECK, [cards_file("context", cloze)], {"context"})
     assert result.conflicts and not result.updates
 
@@ -227,7 +227,7 @@ def french_deck():
 def test_a_declared_field_reaches_the_note_type_and_the_note():
     anki = FakeAnki()
     deck = french_deck()
-    entry = card("context.a", style="vocab", fields={"Phonetic": "[pɑ̃tut]"})
+    entry = card("context.a", type="vocab", fields={"Phonetic": "[pɑ̃tut]"})
     result, errors = sync(anki, deck, [cards_file("context", entry)], {"context"})
 
     assert (len(result.adds), errors) == (1, [])
@@ -240,7 +240,7 @@ def test_a_declared_field_reaches_the_note_type_and_the_note():
 def test_removing_a_declared_field_refuses_rather_than_destroying():
     anki = FakeAnki()
     deck = french_deck()
-    sync(anki, deck, [cards_file("context", card("context.a", style="vocab"))], {"context"})
+    sync(anki, deck, [cards_file("context", card("context.a", type="vocab"))], {"context"})
     assert "Phonetic" in anki.models["Test Deck Basic"]
 
     # The deck stops declaring the field. Anki still has it, full of content.

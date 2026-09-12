@@ -1,57 +1,11 @@
-import pytest
-
-from _lib.config import ConfigError, Deck, DeckConfig
+from _lib.config import Deck, DeckConfig
 from _lib.notetypes import CSS, css_for, note_types
 from _lib.render import markdown
 
 
-def deck_with_templates(tmp_path, **files):
-    (tmp_path / "tpl").mkdir()
-    for name, body in files.items():
-        (tmp_path / "tpl" / name).write_text(body)
-    config = DeckConfig.model_validate({"name": "T", "tag_root": "t", "templates": "tpl"})
+def plain_deck(tmp_path, **overrides):
+    config = DeckConfig.model_validate({"name": "T", "tag_root": "t", **overrides})
     return Deck(config, tmp_path)
-
-
-def test_a_deck_without_templates_gets_the_shipped_ones(tmp_path):
-    plain = Deck(DeckConfig.model_validate({"name": "T", "tag_root": "t"}), tmp_path)
-    types = note_types(plain)
-    basic, cloze = types["basic"], types["cloze"]
-    assert "{{Front}}" in basic.templates["Card 1"][0]
-    assert "{{cloze:Text}}" in cloze.templates["Cloze"][0]
-    assert css_for(plain) == CSS
-
-
-def test_a_deck_can_replace_one_side_and_keep_the_rest(tmp_path):
-    deck = deck_with_templates(tmp_path, **{"basic.front.html": "<h1>{{Front}}</h1>"})
-    types = note_types(deck)
-    basic, cloze = types["basic"], types["cloze"]
-    assert basic.templates["Card 1"][0] == "<h1>{{Front}}</h1>"
-    # Everything it did not override is still the shipped template.
-    assert "<hr id=" in basic.templates["Card 1"][1]
-    assert "{{cloze:Text}}" in cloze.templates["Cloze"][0]
-
-
-def test_cloze_and_reverse_templates_are_overridable(tmp_path):
-    deck = deck_with_templates(
-        tmp_path,
-        **{"cloze.back.html": "<div>{{Extra}}</div>", "basic-reverse.front.html": "<p>{{Back}}</p>"},
-    )
-    types = note_types(deck)
-    basic, cloze = types["basic"], types["cloze"]
-    assert cloze.templates["Cloze"][1] == "<div>{{Extra}}</div>"
-    assert basic.templates["Card 2"][0] == "<p>{{Back}}</p>"
-
-
-def test_an_empty_template_is_an_error_not_a_blank_card(tmp_path):
-    deck = deck_with_templates(tmp_path, **{"basic.front.html": "   \n"})
-    with pytest.raises(ConfigError, match="empty"):
-        note_types(deck)
-
-
-def test_a_deck_can_replace_the_css(tmp_path):
-    deck = deck_with_templates(tmp_path, **{"cards.css": ".card { color: red }"})
-    assert css_for(deck) == ".card { color: red }"
 
 
 def test_raw_html_is_shown_literally():
@@ -77,3 +31,23 @@ def test_cloze_markers_survive_markdown():
 def test_css_has_light_and_dark_highlighting():
     assert ".card pre code .k" in CSS
     assert ".nightMode pre code .k" in CSS
+
+
+def test_a_deck_gets_the_shipped_templates_and_css(tmp_path):
+    deck = plain_deck(tmp_path)
+    types = note_types(deck)
+    assert "{{Front}}" in types["basic"].templates["Card 1"][0]
+    assert "{{cloze:Text}}" in types["cloze"].templates["Cloze"][0]
+    assert css_for(deck) == CSS
+
+
+def test_a_deck_can_ship_its_own_stylesheet(tmp_path):
+    # Restyling is all a deck needs; the card templates themselves are the tool's.
+    (tmp_path / "cards.css").write_text(".card { color: red }")
+    deck = plain_deck(tmp_path, css="cards.css")
+    assert css_for(deck) == ".card { color: red }"
+
+
+def test_a_missing_stylesheet_falls_back_rather_than_failing(tmp_path):
+    deck = plain_deck(tmp_path, css="nonexistent.css")
+    assert css_for(deck) == CSS

@@ -44,7 +44,7 @@ def fields(card: Card, config: DeckConfig) -> dict[str, str]:
     # A deck's own fields are rendered like any other card text.
     own = {name: markdown(value) for name, value in card.fields.items()}
 
-    card_type = config.types().get(card.kind)
+    card_type = config.card_type_map().get(card.type)
     if card_type is not None and card_type.cloze:
         return {**common, "Text": markdown(card.text), "Extra": markdown(card.extra), **own}
     return {

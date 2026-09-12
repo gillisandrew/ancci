@@ -15,10 +15,10 @@ def managed_tags(config: DeckConfig) -> set[str]:
     """Tags the sync owns. Everything else on a note belongs to the user.
 
     A card's type is its tag, so the vocabulary is every type the deck resolves to — not
-    just the bare names in `styles:`. Miss the shipped ones and they read as user tags,
+    just the bare names in `types:`. Miss the shipped ones and they read as user tags,
     which shows up as tag churn rather than as an error.
     """
-    return {*config.types(), *config.tags, ORPHAN_TAG}
+    return {*config.card_type_map(), *config.tags, ORPHAN_TAG}
 
 
 def is_managed_tag(tag: str, config: DeckConfig) -> bool:
@@ -27,7 +27,7 @@ def is_managed_tag(tag: str, config: DeckConfig) -> bool:
 
 def note_type_for(card: Card, deck: Deck) -> str:
     """The Anki model name a card lands on, via the note type its card type names."""
-    card_type = deck.config.types().get(card.kind)
+    card_type = deck.config.card_type_map().get(card.type)
     key = card_type.note_type if card_type else "basic"
     return deck.config.note_types[key]
 
@@ -98,7 +98,7 @@ def plan(files: list[CardFile], notes: dict[str, Note], areas: set[str], deck: D
                 continue
             if note.model != note_type_for(card, deck):
                 result.conflicts.append(
-                    f"{card.id}: is a {note.model} note in Anki but a {card.kind} card in the repo; "
+                    f"{card.id}: is a {note.model} note in Anki but a {card.type} card in the repo; "
                     f"give it a new id"
                 )
                 continue

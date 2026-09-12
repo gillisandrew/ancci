@@ -11,7 +11,7 @@ CONFIG = {
     "name": "Test Deck",
     "tag_root": "test",
     # The tool ships basic and cloze; every other name is the deck's own.
-    "styles": ["definition", "footgun", "tradeoff", "pattern"],
+    "types": ["definition", "footgun", "tradeoff", "pattern"],
     "sources": {
         "hosts": ["platform.claude.com", "github.com"],
         "github_orgs": ["anthropics"],
@@ -26,7 +26,7 @@ def deck(tmp_path, **overrides):
 def card(**overrides):
     base = {
         "id": "context.prompt-caching",
-        "style": "definition",
+        "type": "definition",
         "topic": "caching",
         "front": "Prompt caching",
         "back": "Reusing the processed prefix of a prompt across requests.",
@@ -43,7 +43,7 @@ def write(tmp_path, name, cards, area=None):
 
 
 def errors(problems):
-    return [str(p) for p in problems if p.error]
+    return [str(p) for p in problems]
 
 
 def test_valid_card_loads(tmp_path):
@@ -52,16 +52,9 @@ def test_valid_card_loads(tmp_path):
     assert files[0].cards[0].anki_tags(deck(tmp_path).config) == ["test::context::caching", "definition"]
 
 
-def test_type_and_style_are_the_same_key(tmp_path):
-    # `style:` is the older spelling; nothing had to be rewritten to introduce `type:`.
-    _, problems = load([write(tmp_path, "context", [card(style=None, type="definition")])], deck(tmp_path))
-    assert errors(problems) == []
-
-
-def test_a_card_naming_two_types_is_rejected(tmp_path):
-    both = card(type="definition", style="footgun")
-    _, problems = load([write(tmp_path, "context", [both])], deck(tmp_path))
-    assert any("two types" in e for e in errors(problems))
+def test_a_card_must_name_a_type(tmp_path):
+    _, problems = load([write(tmp_path, "context", [card(type=None)])], deck(tmp_path))
+    assert errors(problems)
 
 
 def test_order_prefix_is_stripped_from_the_area(tmp_path):
@@ -105,14 +98,14 @@ def test_a_deck_without_a_host_allowlist_accepts_any_url(tmp_path):
 
 
 def test_a_card_naming_an_undeclared_type_is_an_error(tmp_path):
-    _, problems = load([write(tmp_path, "context", [card(style="conjugation")])], deck(tmp_path))
+    _, problems = load([write(tmp_path, "context", [card(type="conjugation")])], deck(tmp_path))
     assert any("unknown type 'conjugation'" in e for e in errors(problems))
 
 
 def test_an_unknown_type_does_not_hide_a_bad_source(tmp_path):
     # errors() reports what it can judge without the type, so one typo does not mask a
     # bad citation until the next round trip.
-    bad = card(style="conjugation", sources=["https://medium.com/x"], tags=["spicy"])
+    bad = card(type="conjugation", sources=["https://medium.com/x"], tags=["spicy"])
     _, problems = load([write(tmp_path, "context", [bad])], deck(tmp_path))
     reported = errors(problems)
     assert any("unknown type" in e for e in reported)
@@ -122,17 +115,17 @@ def test_an_unknown_type_does_not_hide_a_bad_source(tmp_path):
 
 def test_the_tool_ships_only_basic_and_cloze(tmp_path):
     bare = Deck(DeckConfig.model_validate({"name": "T", "tag_root": "t"}), tmp_path)
-    assert sorted(bare.config.types()) == ["basic", "cloze"]
+    assert sorted(bare.config.card_type_map()) == ["basic", "cloze"]
 
 
 def test_a_bare_name_matching_a_shipped_type_keeps_that_type(tmp_path):
     # The guard that matters: a deck listing `cloze` bare must not get the basic contract,
     # or its cloze cards route onto the basic note type and Anki re-adds every one.
-    listed = deck(tmp_path, styles=["definition", "cloze"])
-    resolved = listed.config.types()["cloze"]
+    listed = deck(tmp_path, types=["definition", "cloze"])
+    resolved = listed.config.card_type_map()["cloze"]
     assert resolved.cloze is True
     assert resolved.note_type == "cloze"
-    cloze_card = card(id="context.c", style="cloze", front=None, back=None, text="{{c1::x}}")
+    cloze_card = card(id="context.c", type="cloze", front=None, back=None, text="{{c1::x}}")
     _, problems = load([write(tmp_path, "context", [cloze_card])], listed)
     assert errors(problems) == []
 
@@ -148,22 +141,22 @@ def test_required_and_forbidden_keys_come_from_the_type(tmp_path):
 
 
 def test_a_deck_can_declare_a_type_with_its_own_field(tmp_path):
+    # This is how a card carries audio, an image, or a phonetic transcription.
     french = deck(
         tmp_path,
-        styles=[],
+        types=[],
         card_types={"vocab": {"requires": ["front", "back"], "optional": ["Phonetic"], "fields": ["Phonetic"]}},
     )
-    entry = card(style="vocab", fields={"Phonetic": "[pɑ̃tut]"})
+    entry = card(type="vocab", fields={"Phonetic": "[pɑ̃tut]"})
     files, problems = load([write(tmp_path, "context", [entry])], french)
     assert errors(problems) == []
-    # and it reaches Anki as a field of its own
     rendered = render_fields(files[0].cards[0], french.config)
     assert "Phonetic" in rendered and "pɑ̃tut" in rendered["Phonetic"]
 
 
 def test_a_field_the_type_never_declared_is_an_error(tmp_path):
-    french = deck(tmp_path, styles=[], card_types={"vocab": {"requires": ["front", "back"]}})
-    entry = card(style="vocab", fields={"Phonetic": "[x]"})
+    french = deck(tmp_path, types=[], card_types={"vocab": {"requires": ["front", "back"]}})
+    entry = card(type="vocab", fields={"Phonetic": "[x]"})
     _, problems = load([write(tmp_path, "context", [entry])], french)
     assert any("declares no field 'Phonetic'" in e for e in errors(problems))
 
@@ -208,12 +201,12 @@ def test_reverse_on_a_cloze_type_is_rejected(tmp_path):
         CardType(note_type="cloze", cloze=True, requires=["text"], optional=["reverse"])
 
 
-# --- shape and limits -------------------------------------------------------------
+# --- shape ------------------------------------------------------------------------
 
 
 def test_cloze_needs_a_deletion(tmp_path):
-    listed = deck(tmp_path, styles=["cloze"])
-    bad = card(id="context.x", style="cloze", front=None, back=None, text="no deletion here")
+    listed = deck(tmp_path, types=["cloze"])
+    bad = card(id="context.x", type="cloze", front=None, back=None, text="no deletion here")
     _, problems = load([write(tmp_path, "context", [bad])], listed)
     assert any("{{c1::" in e for e in errors(problems))
 
@@ -243,43 +236,11 @@ def test_duplicate_ids_across_files(tmp_path):
     assert any("duplicate id" in e for e in errors(problems))
 
 
-def test_long_answers_warn_but_do_not_fail(tmp_path):
-    cards = [card(back="x" * 301), card(id="context.q", front="y" * 201)]
+def test_length_is_never_checked(tmp_path):
+    # How long is too long is a judgement, and it belongs to whoever writes the card.
+    cards = [card(back="x" * 900), card(id="context.q", front="y" * 900)]
     _, problems = load([write(tmp_path, "context", cards)], deck(tmp_path))
-    assert errors(problems) == []
-    assert any("condense to bold verdict" in str(p) for p in problems)
-    assert any("condense the question" in str(p) for p in problems)
-
-
-def test_limits_come_from_the_deck(tmp_path):
-    generous = deck(tmp_path, limits={"back_chars": 400})
-    _, problems = load([write(tmp_path, "context", [card(back="x" * 301)])], generous)
     assert problems == []
-
-
-def test_a_per_field_limit_checks_a_deck_field(tmp_path):
-    french = deck(
-        tmp_path,
-        styles=[],
-        card_types={"vocab": {"requires": ["front", "back"], "fields": ["Phonetic"]}},
-        limits={"fields": {"Phonetic": {"chars": 10}}},
-    )
-    entry = card(style="vocab", fields={"Phonetic": "x" * 20})
-    _, problems = load([write(tmp_path, "context", [entry])], french)
-    assert errors(problems) == []
-    assert any("Phonetic is 20 chars" in str(p) for p in problems)
-
-
-def test_a_limit_naming_an_absent_field_is_simply_not_checked(tmp_path):
-    odd = deck(tmp_path, limits={"fields": {"Nonexistent": {"chars": 1}}})
-    _, problems = load([write(tmp_path, "context", [card()])], odd)
-    assert problems == []
-
-
-def test_more_than_three_bullets_warns(tmp_path):
-    back = "**Verdict**\n\n- a\n- b\n- c\n- d\n"
-    _, problems = load([write(tmp_path, "context", [card(back=back)])], deck(tmp_path))
-    assert any("4 bullets" in str(p) for p in problems)
 
 
 def test_unknown_keys_are_errors(tmp_path):
