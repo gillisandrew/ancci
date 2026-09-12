@@ -1,42 +1,100 @@
 # ancci
 
-An Anki deck on agentic AI in the Anthropic ecosystem: Claude API, tool use, context and cost, Agent SDK and Managed Agents, Claude Code, MCP, Anthropic's published patterns, and safety. Aimed at experienced programmers, current practice only, and every card cites an Anthropic (or MCP) source.
+Author Anki decks as YAML and sync them one way into Anki through
+[AnkiConnect](https://git.sr.ht/~foosoft/anki-connect). What a card may look like, what it
+may cite and what it lands on in Anki are all properties of the deck, not of this tool.
 
-The YAML in `cards/` is the source of truth. `ancci sync` pushes it one way into Anki through [AnkiConnect](https://git.sr.ht/~foosoft/anki-connect).
+Decks live in their own repositories. This one holds only the tooling.
 
-## Layout
+## What a deck is
 
-| path | what |
-|---|---|
-| `cards/<area>.yaml` | the cards, one file per area |
-| `research/<area>.md` | source notes each area's cards were written from (URLs, fetch dates, quotes) |
-| `AUTHORING.md` | card rules and the YAML schema |
-| `src/ancci/` | validation, rendering and sync |
+A directory containing `deck.yaml`. Commands find it by walking up from the working
+directory, so run them from inside the deck you mean.
 
-Areas, in the order they are introduced: `patterns`, `api`, `tools`, `context`, `agents`, `claude-code`, `mcp`, `safety`.
+```
+my-deck/
+  deck.yaml              what this deck is called and how its cards are shaped
+  AUTHORING.md           prose rules the authoring agent reads
+  cards/NN-<area>.yaml   the cards; the NN- prefix orders areas and means nothing else
+  research/<area>.md     source notes each area was written from
+```
+
+The `NN-` prefix is ordering metadata only. `cards/01-patterns.yaml` is the `patterns`
+area, its cards are `patterns.*`, and renumbering the file never touches a card.
+
+## deck.yaml
+
+```yaml
+name: Agentic AI            # the Anki deck
+tag_root: agentic           # cards are tagged <tag_root>::<area>::<topic>
+
+note_types:                 # optional; defaults to "<name> Basic" / "<name> Cloze"
+  basic: Agentic Basic      # note types are global in Anki, so each deck names its own
+  cloze: Agentic Cloze
+
+styles: [definition, cloze, footgun, tradeoff, pattern]   # optional; this is the default
+tags: [beta, migration]     # optional; extra tags a card may carry
+templates: templates/       # optional; a directory of Anki templates and CSS of your own
+
+limits:                     # optional; these only ever warn
+  back_chars: 220
+  front_chars: 200
+  bullets: 3
+  cloze_deletions: 3
+
+sources:                    # optional; omit `hosts` to accept any URL
+  hosts: [platform.claude.com, anthropic.com]
+  github_orgs: [anthropics]
+  require_https: true
+```
+
+A repo holding several decks can put shared house style in a root `ancci.yaml` using the
+same keys; each deck inherits it and overrides only what differs.
+
+## Sources
+
+A card cites one or more sources. A bare string is a URL:
+
+```yaml
+sources:
+  - https://platform.claude.com/docs/en/build-with-claude/prompt-caching
+  - {type: file, path: notes/talk.pdf, at: "p. 4"}
+  - {type: repo, repo: anthropics/claude-code, ref: abc1234, path: README.md}
+  - {type: video, url: "https://www.youtube.com/watch?v=...", t: 372}
+```
+
+The host allowlist applies to `url` and `video` sources — anything fetched from a
+publisher. Files and repositories are cited by path and ref instead.
 
 ## Usage
 
-Anki must be running with AnkiConnect installed.
-
 ```sh
-uv run ancci validate            # schema + atomicity checks, no Anki needed
-uv run ancci sync --dry-run -v   # show what would change
-uv run ancci sync                # everything in cards/
-uv run ancci sync tools          # one area
-uv run ancci report              # flagged cards, leeches, Feedback notes
-uv run ancci resolve <card-id>   # clear Feedback and flags once fixed (--all for every one)
-uv run pytest
+ancci validate            # schema + answer-shape checks, no Anki needed
+ancci sync --dry-run -v   # show what would change
+ancci sync                # the whole deck
+ancci sync tools          # one area
+ancci report              # flagged cards, leeches, Feedback notes
+ancci resolve <card-id>   # clear Feedback and flags once fixed
+ancci --deck path/to/deck sync    # a deck other than the one you are standing in
 ```
+
+Run from a directory holding several decks and nothing else, and every command will tell
+you which decks it found rather than guess at one.
 
 ## How the sync behaves
 
-- Creates the `Agentic AI` deck and the `Agentic Basic` / `Agentic Cloze` note types, and keeps their templates and CSS up to date.
-- Notes are matched on the `ID` field. Changed cards are updated in place, so review history is kept.
-- A card removed from the repo is **suspended and tagged `orphaned`**, never deleted. Putting it back revives it. Syncing a single area only orphans cards from that area.
-- The repo wins for card content and for the tags it manages (`agentic::*`, style tags, `beta`, `migration`). Your own tags (including Anki's `leech`) and the `Feedback` field are left alone.
-- AnkiConnect cannot update a note that is open in the Browse window's editor; close it before syncing.
+- Creates the deck and its note types, and keeps their templates and CSS up to date.
+- Notes are matched on the `ID` field. Changed cards are updated in place, so review
+  history is kept.
+- A card removed from the repo is **suspended and tagged `orphaned`**, never deleted.
+  Putting it back revives it. Syncing one area only orphans cards from that area.
+- The repo wins for card content and the tags it manages (`<tag_root>::*`, style tags and
+  the deck's extra tags). Your own tags — including Anki's `leech` — and the `Feedback`
+  field are left alone.
+- AnkiConnect cannot update a note open in the Browse window's editor; close it first.
 
-## Reporting a bad card
+## Development
 
-While studying, flag the card (any colour) and optionally type what's wrong into its **Feedback** field (Edit → Feedback). `uv run ancci report` lists everything flagged, every leech, and every Feedback note, ready to be fixed in the YAML.
+```sh
+uv run pytest
+```
