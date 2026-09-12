@@ -35,10 +35,10 @@ directory, so run them from inside the deck you mean.
 
 ```
 my-deck/
-  deck.yaml              what this deck is called and how its cards are shaped
-  AUTHORING.md           prose rules the authoring agent reads
+  deck.yaml              what it is called, how its cards are shaped, who reads them
   cards/NN-<area>.yaml   the cards; the NN- prefix orders areas and means nothing else
   research/<area>.md     source notes each area was written from
+  AUTHORING.md           optional; only when three lines of prose will not do
 ```
 
 The `NN-` prefix is ordering metadata only. `cards/01-patterns.yaml` is the `patterns`
@@ -49,6 +49,11 @@ area, its cards are `patterns.*`, and renumbering the file never touches a card.
 ```yaml
 name: Agentic AI            # the Anki deck
 tag_root: agentic           # cards are tagged <tag_root>::<area>::<topic>
+
+# The only prose most decks need. One line each; vague ones do nothing.
+audience: experienced programmers new to agentic AI
+scope: current practice only, GA and beta features
+avoid: exact prices, rate limits, model ids
 
 note_types:                 # optional; defaults to "<name> Basic" / "<name> Cloze"
   basic: Agentic Basic      # note types are global in Anki, so each deck names its own
@@ -72,6 +77,16 @@ sources:                    # optional; omit `hosts` to accept any URL
 
 A repo holding several decks can put shared house style in a root `ancci.yaml` using the
 same keys; each deck inherits it and overrides only what differs.
+
+Guidance sits in three layers, so a deck stays light:
+
+| layer | lives in | covers |
+|---|---|---|
+| universal | the `author` skill | how to write a good card at all |
+| house style | root `ancci.yaml`, and a root `AUTHORING.md` if you want prose | your voice across every deck |
+| this deck | `audience` / `scope` / `avoid` in `deck.yaml` | who reads it and what belongs on a card |
+
+A deck that genuinely needs more keeps its own `AUTHORING.md`, which overrides the rest.
 
 ## Sources
 

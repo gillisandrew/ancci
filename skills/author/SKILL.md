@@ -27,13 +27,40 @@ one are wrong cards.
 
 Never write a card before reading, in this order:
 
-1. `deck.yaml` — the styles this deck uses, its limits, what it may cite. A style that is
-   not listed is an error, not a suggestion.
-2. `AUTHORING.md` — the audience, the scope, the answer format. This governs voice.
-3. `research/<area>.md` — the source notes. **Every fact on a card must be supported by
+1. **`deck.yaml`** — the styles this deck uses, its limits, what it may cite, and usually
+   all the prose there is: `audience` (what the reader already knows, so a card never
+   explains it), `scope` (what belongs on a card) and `avoid` (what does not). A style not
+   listed is an error, not a suggestion.
+2. **A root `ancci.yaml` and `AUTHORING.md` above the deck**, if present — house style
+   shared by every deck in the repository. The deck's own settings override them.
+3. **The deck's own `AUTHORING.md`**, if it has one. Most decks do not; a deck that needs
+   more than three lines of prose keeps one, and it wins over everything above.
+4. **`research/<area>.md`** — the source notes. **Every fact on a card must be supported by
    something here.** If the notes do not support it, it does not go on a card; say so
    rather than reaching for what you already know.
-4. An existing `cards/*.yaml`, if any, to match the house voice exactly.
+5. An existing `cards/*.yaml`, if any. The cards are the deck's real style guide — match
+   their voice exactly rather than inventing a new one.
+
+## Card fields
+
+```yaml
+area: extraction              # matches the file name with its NN- prefix stripped
+cards:
+  - id: extraction.bloom      # <area>.<kebab-slug>, permanent once synced
+    style: technique          # must be one the deck declares
+    topic: pour-over          # kebab-case; becomes <tag_root>::<area>::<topic>
+    front: |                  # every style except cloze
+    back: |
+    text: |                   # cloze only, with {{c1::...}}
+    extra: |                  # cloze only, optional
+    code: |                   # optional, fenced, shown on the back
+    reverse: false            # definition only; the back must not contain the front
+    tags: [beta]              # only tags the deck declares
+    sources:                  # a bare string is a URL
+      - https://example.com/page
+      - {type: file, path: notes.pdf, at: "p. 4"}
+    verified: 2026-09-12      # when you last checked the card against its sources
+```
 
 ## Interview briefly, then draft a sample
 

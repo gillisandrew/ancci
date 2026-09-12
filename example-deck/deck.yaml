@@ -3,8 +3,14 @@
 # Nothing here is about software: the point is that a deck declares its own vocabulary.
 # `technique` and `ratio` are styles this deck invented; `footgun` and `pattern`, which
 # ancci ships by default, are absent because they suit software and not coffee.
+#
+# Note there is no AUTHORING.md. Three lines of prose are all most decks need.
 name: Coffee Brewing
 tag_root: coffee
+
+audience: makes coffee daily, owns a grinder and a scale
+scope: why a variable moves the cup, not any one café's recipe
+avoid: equipment prices, model numbers, brand recommendations
 
 styles: [definition, cloze, technique, ratio]
 tags: [disputed]

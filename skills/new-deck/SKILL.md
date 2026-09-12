@@ -41,23 +41,30 @@ should be called or where they go if the answer is obvious from the surrounding 
 ```
 <deck>/
   deck.yaml
-  AUTHORING.md
   cards/          (empty; the author skill fills it)
   research/       (empty; source notes land here)
 ```
 
-`deck.yaml` carries what a validator can check: `name`, `tag_root`, `styles`, `tags`,
-`limits`, `sources`, and `note_types` if the defaults (`<name> Basic` / `<name> Cloze`)
-are not wanted. See `${CLAUDE_PLUGIN_ROOT}/example-deck/deck.yaml` for a worked example
-that overrides the default styles.
+One file. `deck.yaml` carries the machine-checkable settings — `name`, `tag_root`,
+`styles`, `tags`, `limits`, `sources`, and `note_types` if the defaults (`<name> Basic` /
+`<name> Cloze`) are not wanted — plus the three lines of prose that change what a good card
+looks like:
 
-`AUTHORING.md` carries what only a reader can check: the audience, the scope boundaries,
-what each style's front and back look like, and the answer format. Write it in the second
-person, addressed to whoever writes cards next. `${CLAUDE_PLUGIN_ROOT}/example-deck/AUTHORING.md`
-is a model to follow.
+```yaml
+audience: makes coffee daily, owns a grinder and a scale
+scope: why a variable moves the cup, not one café's recipe
+avoid: equipment prices, model numbers
+```
 
-If several decks live in one repository and share house style, put the shared keys in a
-root `ancci.yaml` instead and let each `deck.yaml` override only what differs.
+Keep those to a line each. They are read by the author skill on every run, so vague ones
+("people interested in the topic") do nothing. See
+`${CLAUDE_PLUGIN_ROOT}/example-deck/deck.yaml` for a worked example that also overrides the
+default styles.
+
+**Do not write an AUTHORING.md.** Universal card craft lives in the author skill, and house
+style belongs in a root `ancci.yaml` shared by every deck in the repository. Only add a
+per-deck `AUTHORING.md` when three lines genuinely will not do — a deck with unusual card
+shapes, or conventions that need explaining. It overrides everything else when present.
 
 ## Finish by proving it loads
 

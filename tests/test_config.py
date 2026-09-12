@@ -50,6 +50,21 @@ def test_standing_at_a_root_with_no_deck_lists_them(tmp_path):
         find_deck(tmp_path)
 
 
+def test_prose_fields_are_optional_and_inherited(tmp_path):
+    (tmp_path / "ancci.yaml").write_text(
+        yaml.safe_dump({"avoid": "prices and model numbers", "limits": {"back_chars": 400}})
+    )
+    directory = make_deck(tmp_path, "coffee")
+    (directory / "deck.yaml").write_text(
+        yaml.safe_dump({"name": "Coffee", "tag_root": "coffee", "audience": "makes coffee daily"})
+    )
+    config = resolve_deck("coffee", tmp_path).config
+    assert config.audience == "makes coffee daily"   # the deck's own
+    assert config.avoid == "prices and model numbers"  # inherited from the root
+    assert config.scope is None  # nobody set one, and that is allowed
+    assert config.limits.back_chars == 400
+
+
 def test_a_deck_found_by_walking_up(tmp_path):
     directory = make_deck(tmp_path, "agentic-ai")
     deep = directory / "cards"

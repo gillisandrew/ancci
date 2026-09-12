@@ -68,6 +68,14 @@ class DeckConfig(BaseModel):
 
     name: str
     tag_root: str
+
+    # The only prose most decks need. What the reader already knows, what belongs on a
+    # card, and what does not — the three things that change what a good card looks like.
+    # A deck wanting more than three lines drops an AUTHORING.md beside deck.yaml instead.
+    audience: str | None = None
+    scope: str | None = None
+    avoid: str | None = None
+
     note_types: NoteTypes | None = None
     styles: list[str] = list(DEFAULT_STYLES)
     # Extra tags a card may carry beyond its style and topic. Deck vocabulary, not universal.
