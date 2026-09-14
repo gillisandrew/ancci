@@ -18,7 +18,7 @@ Decks live in their own repositories. This one holds only the tooling.
 | `/ancci:new-deck` | scaffolds a deck after settling subject, audience and card types |
 | `/ancci:add-source` | reads a page, video, PDF, EPUB or file into a research note |
 | `/ancci:author` | writes cards from a deck's research notes, sample batch first |
-| `/ancci:review` | gathers what you flagged while studying, helps fix it, clears the flags |
+| `/ancci:review` | gathers what you flagged or suspended while studying, helps fix it, clears the flags |
 | `/ancci:sync` | validates and pushes a deck into Anki, dry run first |
 
 `new-deck` and `author` only run when you ask for them by name; `review` and `sync` can
@@ -137,8 +137,8 @@ scripts/validate.py                  # schema + answer-shape checks, no Anki nee
 scripts/sync.py --dry-run -v         # show what would change
 scripts/sync.py                      # the whole deck
 scripts/sync.py tools                # one area
-scripts/report.py                    # flagged cards, leeches, Feedback notes
-scripts/resolve.py <card-id>         # clear Feedback and flags once fixed
+scripts/report.py                    # flagged or suspended cards, leeches, Feedback notes
+scripts/resolve.py <card-id>         # clear Feedback and flags, and unsuspend, once fixed
 scripts/sync.py --deck path/to/deck  # a deck other than the one you are standing in
 ```
 

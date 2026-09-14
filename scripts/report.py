@@ -3,7 +3,7 @@
 # requires-python = ">=3.12"
 # dependencies = ["pydantic>=2.8", "pyyaml>=6.0", "requests>=2.32"]
 # ///
-"""List the cards you marked while studying: flagged, leeches, and Feedback notes."""
+"""List the cards you marked while studying: flagged, suspended, leeches, and Feedback notes."""
 
 import argparse
 import sys

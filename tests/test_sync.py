@@ -90,6 +90,8 @@ class FakeAnki:
             self.notes[nid]["tags"] += tags.split()
 
     def findCards(self, query):
+        if "is:suspended" in query:
+            return [card for card in self.suspended if ORPHAN_TAG not in self.notes[card // 10]["tags"]]
         return [card for card, flag in self.flags.items() if flag]
 
     def updateNoteFields(self, note):
@@ -199,15 +201,41 @@ def test_resolve_clears_feedback_and_flags_but_leaves_the_leech_tag():
     assert "leech" in note["tags"]
 
 
-def test_resolve_all_covers_both_flagged_and_feedback_cards():
+def test_resolve_unsuspends_a_card_suspended_while_studying():
+    anki = FakeAnki()
+    sync(anki, DECK, [cards_file("context", card("context.a"))], {"context"})
+    anki.flags[10] = 1
+    anki.suspended.add(10)
+
+    cleared, errors = resolve(anki, DECK, ["context.a"])
+    assert (cleared, errors) == (["context.a"], [])
+    assert (anki.flags[10], anki.suspended) == (0, set())
+
+
+def test_resolve_leaves_an_orphan_suspended():
+    """A card whose meaning changed moves to a new id; the old note must stay out of study."""
+    anki = FakeAnki()
+    sync(anki, DECK, [cards_file("context", card("context.a"))], {"context"})
+    anki.flags[10] = 1
+    anki.suspended.add(10)
+    sync(anki, DECK, [cards_file("context", card("context.b"))], {"context"})
+
+    cleared, errors = resolve(anki, DECK, ["context.a"])
+    assert (cleared, errors) == (["context.a"], [])
+    assert (anki.flags[10], 10 in anki.suspended) == (0, True)
+
+
+def test_resolve_all_covers_flagged_suspended_and_feedback_cards():
     anki = FakeAnki()
     sync(anki, DECK, [cards_file("context", card("context.a"), card("context.b"))], {"context"})
     anki.note_by_id("context.a")["fields"]["Feedback"] = "this is wrong"
     anki.flags[20] = 2
+    sync(anki, DECK, [cards_file("context", card("context.a"), card("context.b"), card("context.c"))], {"context"})
+    anki.suspended.add(30)
 
     cleared, errors = resolve(anki, DECK, [], everything=True)
-    assert (cleared, errors) == (["context.a", "context.b"], [])
-    assert anki.flags[20] == 0
+    assert (cleared, errors) == (["context.a", "context.b", "context.c"], [])
+    assert (anki.flags[20], anki.suspended) == (0, set())
 
 
 def french_deck():

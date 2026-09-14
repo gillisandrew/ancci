@@ -1,12 +1,13 @@
 ---
 name: review
-description: Gathers the cards flagged while studying an ancci deck - flags, leeches and Feedback notes - helps fix them in the YAML, then clears the flags. Use when someone says "review my cards", "gather card feedback", "what did I flag", "fix the bad cards" or "check my deck feedback".
+description: Gathers the cards flagged while studying an ancci deck - flags, suspensions, leeches and Feedback notes - helps fix them in the YAML, then clears the flags and unsuspends. Use when someone says "review my cards", "gather card feedback", "what did I flag", "fix the bad cards" or "check my deck feedback".
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash("${CLAUDE_PLUGIN_ROOT}/scripts/report.py" *), Bash("${CLAUDE_PLUGIN_ROOT}/scripts/resolve.py" *), Bash("${CLAUDE_PLUGIN_ROOT}/scripts/validate.py" *), Bash("${CLAUDE_PLUGIN_ROOT}/scripts/sync.py" *)
 ---
 
 # Close the feedback loop
 
-While studying, a card gets flagged and sometimes a note typed into its Feedback field.
+While studying, a card gets flagged or suspended, and sometimes a note typed into its Feedback
+field.
 This skill turns that into fixed cards.
 
 Anki must be running with AnkiConnect.
@@ -29,7 +30,8 @@ not said which, ask.
 "${CLAUDE_PLUGIN_ROOT}/scripts/report.py" --deck <name>
 ```
 
-Each line is a card id, why it needs attention (flag colour, `leech`, `feedback`) and the
+Each line is a card id, why it needs attention (flag colour, `suspended`, `leech`,
+`feedback`) and the
 feedback text. `Nothing flagged.` means there is nothing to do — say so and stop.
 
 ## 2. Diagnose against the deck's own rules
@@ -44,6 +46,9 @@ before proposing anything. Most complaints are one of:
 - **The card is right and the reader was wrong** — say so plainly rather than inventing a
   change. Sometimes the fix is that the card is fine.
 
+A card only `suspended`, with no flag or feedback, was pulled from study by hand — treat it
+like a flag and find what is wrong from the card itself.
+
 A `leech` with no feedback usually means the card is hard to recall rather than wrong:
 consider splitting it, not rewording it.
 
@@ -55,7 +60,7 @@ Edit the YAML. **If a card's meaning changes, give it a new id and delete the ol
 the sync suspends the old note and tags it `orphaned`, preserving its history. A wording
 fix keeps the id.
 
-Then validate, sync, and only then clear the flags:
+Then validate, sync, and only then clear the flags and unsuspend:
 
 ```bash
 "${CLAUDE_PLUGIN_ROOT}/scripts/validate.py" --deck <name>
@@ -64,8 +69,11 @@ Then validate, sync, and only then clear the flags:
 "${CLAUDE_PLUGIN_ROOT}/scripts/resolve.py" --deck <name> <card-id>...
 ```
 
-`resolve` clears the Feedback field and every flag on those cards. It deliberately leaves
-the `leech` tag and all review history alone — a leech stays a leech until the reason it
-became one is fixed.
+`resolve` clears the Feedback field and every flag on those cards, and unsuspends them so
+they come back into study. An `orphaned` card stays suspended — that suspension is the
+sync's, so resolving an old id after moving its card to a new one is safe. It deliberately
+leaves the `leech` tag and all review history alone — a leech stays a leech until the
+reason it became one is fixed.
 
-Clear only the cards you actually dealt with.
+Clear only the cards you actually dealt with: anything resolved goes straight back into
+study.

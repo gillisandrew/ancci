@@ -3,7 +3,7 @@
 # requires-python = ">=3.12"
 # dependencies = ["pydantic>=2.8", "pyyaml>=6.0", "requests>=2.32"]
 # ///
-"""Clear Feedback and flags on cards you have since fixed. Leeches keep their tag."""
+"""Clear Feedback and flags on cards you have since fixed, and unsuspend them. Leeches keep their tag."""
 
 import argparse
 import sys
@@ -20,7 +20,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(prog="ancci resolve", description=__doc__)
     deck_argument(parser)
     parser.add_argument("targets", nargs="*", help="card ids, as printed by report")
-    parser.add_argument("--all", action="store_true", help="every flagged or Feedback card in the deck")
+    parser.add_argument("--all", action="store_true", help="every flagged, suspended or Feedback card in the deck")
     parser.add_argument("--url", default=DEFAULT_URL)
     args = parser.parse_args()
 
